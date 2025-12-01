@@ -1,4 +1,4 @@
-## Available data:
+# Available data:
 
 ### Training data (1982-2020)
 
@@ -34,3 +34,9 @@ All files contain an ID column, which is a unique ID for each datapoint (crop, g
 Additional units: short-wave radiation [W m-2], precipitation [kg m-2 s-1], temperatures [o C], yield [t ha-1].
 
 Because the dataset is very large, each climate variable is in a separate file to make it easier to work with - you might not want to use all of the variables at first. Each file contains 240 columns reflecting one daily value, from 30 days before sowing until 210 days after, as well as a column called variable with the name of the variable being measured (e.g. pr, tas or rsds), and columns describing the year, latitude, longitude and crop, as well as the unique ID to facilitate joining the datasets.
+
+
+# Hipothesis
+
+- Nitrogen fertilization rates and soil texture remain constant across longitude and latitude over the years.
+- CO2 concentration is constant per year but increases over the years

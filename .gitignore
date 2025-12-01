@@ -1,8 +1,11 @@
+## Folders
 raw_data/
+notebook/
+test/
+
+# Autres
 *.ipynb
 .env
 *pycache*
-notebook/
-test/
 .log
 .temp

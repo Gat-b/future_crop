@@ -10,7 +10,8 @@ matplotlib
 seaborn
 scikit-learn
 geopandas
-pyplot
+# pyplot should be in matplotlib
+pyarrow
 
 ################################################################
 # Google cloud

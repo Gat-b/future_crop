@@ -1,18 +1,42 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
-import sys
-import geopandas
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
-from sklearn.model_selection import train_test_split
+from pathlib import Path
 
 
 class Preprocessing:
 
-    def __init__(self):
-        pass
+    def __init__(self, raw_data_path='raw_data', processed_data_path='processed_data'):
+        
+        self.raw_data_path = Path(raw_data_path)
+        self.processed_data_path = Path(processed_data_path)
+        
+        self.processed_data_path.mkdir(parents=True, exist_ok=True)
+    
+    def load_raw_data(self):
+        """Charge et merge les fichiers parquet bruts."""
+        print("Chargement des données brutes...")
+        wheat_train_datasets = [
+            {'file_name': 'pr_', 'path': self.raw_data_path / 'pr_wheat_train.parquet'},
+            {'file_name': 'soil_co2_', 'path': self.raw_data_path / 'soil_co2_wheat_train.parquet'},
+            {'file_name': 'tas_', 'path': self.raw_data_path / 'tas_wheat_train.parquet'},
+            {'file_name': 'tasmin_', 'path': self.raw_data_path / 'tasmin_wheat_train.parquet'},
+            {'file_name': 'tasmax_', 'path': self.raw_data_path / 'tasmax_wheat_train.parquet'},
+            {'file_name': 'rsds_', 'path': self.raw_data_path / 'rsds_wheat_train.parquet'},
+            {'file_name': '', 'path': self.raw_data_path / 'train_solutions_wheat.parquet'}
+        ]
+        
+        dfs = []
+        for file in wheat_train_datasets:
+            # Vérification basique si le fichier existe
+            if not file['path'].exists():
+                raise FileNotFoundError(f"Fichier manquant : {file['path']}")
+            dfs.append(pd.read_parquet(file['path']).add_prefix(file['file_name']))
+        
+        print("data_loaded !")    
+        return pd.concat(dfs, axis=1)
+    
     
     ### Compression function to save RAM ###
 
@@ -63,10 +87,11 @@ class Preprocessing:
         print("optimized size by {} %".format(round(ratio,2)))
         print("new DataFrame size: ", round(out_size / 1024**2,2), " MB")
 
-        X = df.drop(columns="yield")
-        y = df[["yield"]]
-
-        return X, y
+        if "yield" in df.columns:
+            X = df.drop(columns="yield")
+            y = df[["yield"]]
+            return X, y
+        return df, None
     
     ### Basic feature engineering ###
 
@@ -114,12 +139,32 @@ class Preprocessing:
         region = pd.Series(np.select(conditions, choices, default='tropical'), 
                         index=X.index, name='region')
         
+        year = X['real_year']
+
         # Returning featured df 
-        X = pd.concat([mean_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
+        X = pd.concat([year, mean_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
                     mean_tas,min_tas,max_tas,
                     mean_rsds, sum_rsds,min_rsds,max_rsds, region], axis=1)
         return X
     
+    ### Train/val split ###
+
+    def split_data(self, X, y, cutoff_year=2010):
+        """
+        Divide data based on a cutoff year.
+        """
+              
+        if 'real_year' not in X.columns:
+             raise ValueError("'real_year' column is required for splitting the time searies data")
+
+        print(f"Splitting data with cutoff year: {cutoff_year}")
+        mask_train = X['real_year'] < cutoff_year
+        mask_val = X['real_year'] >= cutoff_year
+
+        X_train, X_val = X[mask_train], X[mask_val]
+        y_train, y_val = y[mask_train], y[mask_val]
+
+        return X_train, X_val, y_train, y_val
     
     ### Scaling functions ###
     
@@ -150,42 +195,56 @@ class Preprocessing:
         X_val_scaled = minmax_scaler.transform(X_val)
         return X_train_scaled, X_val_scaled
 
+    ### Saving and checking data ###
+
+    def check_processed_files(self, prefix="train"):
+        """check if files already exists and processed"""
+        files = ['X_train.csv', 'X_val.csv', 'y_train.csv', 'y_val.csv']
+        return all((self.processed_data_path / f"{prefix}_{f}").exists() for f in files)
     
+    def save_data(self, X_train, X_val, y_train, y_val):
+        """Export in CSV on a local dir"""
+        print(f"Saving processed data in {self.processed_data_path}...")
+        X_train.to_csv(self.processed_data_path / "X_train.csv", index=False)
+        X_val.to_csv(self.processed_data_path / "X_val.csv", index=False)
+        y_train.to_csv(self.processed_data_path / "y_train.csv", index=False)
+        y_val.to_csv(self.processed_data_path / "y_val.csv", index=False)
+        print("Done")
+
+    ### Running it all ###
+
+    def run_pipeline(self, cutoff_year=2010, force_reload=False):
+        """
+        Running the entire preprocessing functions.
+        If iles already exists then preprocessing is skipped unless forced. (force_reload=True).
+        """
+
+        if self.check_processed_files() and not force_reload:
+            print("Preproc already done.")
+            return
+
+        # 1. Load
+        df_raw = self.load_raw_data()
+        
+        # 2. Compress & Split features/target
+        X_raw, y = self.compress(df_raw)
+        
+        # 3. Feature Engineering
+        X_features = self.feature_engineering(X_raw)
+                
+        # 4. Split
+        X_train, X_val, y_train, y_val = self.split_data(X_features, y, cutoff_year=cutoff_year)
+        
+        # 5. Scaling 
+                
+        # 6. Save
+        self.save_data(X_train, X_val, y_train, y_val)
+
+
+
 
 if __name__ == "__main__":
-    preproc = Preprocessing
-    wheat_train_datasets = [
-    {'file_name': 'pr_', 'path': 'raw_data/pr_wheat_train.parquet'},
-    {'file_name': 'soil_co2_', 'path': 'raw_data/soil_co2_wheat_train.parquet'},
-    {'file_name': 'tas_', 'path': 'raw_data/tas_wheat_train.parquet'},
-    {'file_name': 'tasmin_', 'path': 'raw_data/tasmin_wheat_train.parquet'},
-    {'file_name': 'tasmax_', 'path': 'raw_data/tasmax_wheat_train.parquet'},
-    {'file_name': 'rsds_', 'path': 'raw_data/rsds_wheat_train.parquet'},
-    {'file_name': '', 'path': 'raw_data/train_solutions_wheat.parquet'}
-    ]
-
-    # Read and store each wheat train dataset with file name prefix
-    wheat_train_dfs = [pd.read_parquet(file['path']).add_prefix(file['file_name']) for file in wheat_train_datasets]
-
-    # Concatenate all wheat train datasets horizontally
-    wheat_train_df = pd.concat(wheat_train_dfs, axis=1)
-    del wheat_train_dfs
-
-    X, y = preproc.compress(wheat_train_df, verbose=True)
-    df = preproc.feature_engineering(X)
-
-    col_to_rb_scale = []
-    col_to_std_scale = []
-    col_to_minmax_scale = []
-
-    rb_df = X[col_to_rb_scale].copy()
-    std_df = X[col_to_std_scale].copy()
-    minmax_df = X[col_to_minmax_scale].copy()
-    X_train_rb, X_val_rb = preproc.robust_scaling(rb_df)
-    X_train_std, X_val_std = preproc.standard_scaling(std_df)
-    X_train_minmax, X_val_minmax = preproc.minmax_scaling(minmax_df)
-
-    X_train = pd.concat(X_train_rb, X_train_std, axis=1)
-    X_train = pd.concat(X_train, X_train_minmax, axis=1)
-    X_val = pd.concat(X_val_rb, X_val_std, axis=1)
-    X_val = pd.concat(X_val, X_val_minmax, axis=1)
+    
+    preproc = Preprocessing(raw_data_path='raw_data', processed_data_path='processed_data')
+    # Lance le pipeline (vérifie si ça existe avant de calculer)
+    preproc.run_pipeline(cutoff_year=2010, force_reload=True)

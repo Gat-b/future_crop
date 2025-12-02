@@ -4,8 +4,8 @@ pytest
 pylint
 ipdb
 jupyterlab
-numpy
-pandas
+numpy==1.23.5
+pandas==1.5.3
 matplotlib
 seaborn
 scikit-learn
@@ -28,3 +28,5 @@ googleapis-common-protos==1.56.4
 tensorflow-macos==2.10.0; sys_platform == 'darwin' and 'ARM' in platform_version # Mac M-chips
 tensorflow==2.10.0; sys_platform == 'darwin' and 'ARM' not in platform_version # Mac Intel chips
 tensorflow==2.10.0; sys_platform != 'darwin' # Windows & Ubuntu Intel chips
+
+

@@ -10,10 +10,11 @@ matplotlib
 seaborn
 scikit-learn
 geopandas
-pyplot
 xgboost
 lightgbm
 catboost
+# pyplot should be in matplotlib
+pyarrow
 
 ################################################################
 # Google cloud
@@ -21,7 +22,6 @@ google-cloud-bigquery
 google-cloud-storage==2.14.0
 google-api-core==2.8.2
 googleapis-common-protos==1.56.4
-
 
 ################################################################
 # TensorFlow

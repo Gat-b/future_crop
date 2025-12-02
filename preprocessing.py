@@ -1,30 +1,33 @@
 import pandas as pd
 import numpy as np
 import os
-from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, OneHotEncoder
 from pathlib import Path
 
 
 class Preprocessing:
 
-    def __init__(self, raw_data_path='raw_data', processed_data_path='processed_data'):
+    def __init__(self, raw_data_path='raw_data', processed_data_path='processed_data', crop='wheat'):
         
         self.raw_data_path = Path(raw_data_path)
         self.processed_data_path = Path(processed_data_path)
+        self.crop = crop
         
         self.processed_data_path.mkdir(parents=True, exist_ok=True)
     
+    ### Data loader - only local for now ###
+    
     def load_raw_data(self):
         """Charge et merge les fichiers parquet bruts."""
-        print("Chargement des données brutes...")
+        print("Loading raw data...")
         wheat_train_datasets = [
-            {'file_name': 'pr_', 'path': self.raw_data_path / 'pr_wheat_train.parquet'},
-            {'file_name': 'soil_co2_', 'path': self.raw_data_path / 'soil_co2_wheat_train.parquet'},
-            {'file_name': 'tas_', 'path': self.raw_data_path / 'tas_wheat_train.parquet'},
-            {'file_name': 'tasmin_', 'path': self.raw_data_path / 'tasmin_wheat_train.parquet'},
-            {'file_name': 'tasmax_', 'path': self.raw_data_path / 'tasmax_wheat_train.parquet'},
-            {'file_name': 'rsds_', 'path': self.raw_data_path / 'rsds_wheat_train.parquet'},
-            {'file_name': '', 'path': self.raw_data_path / 'train_solutions_wheat.parquet'}
+            {'file_name': 'pr_', 'path': self.raw_data_path / f'pr_{self.crop}_train.parquet'},
+            {'file_name': 'soil_co2_', 'path': self.raw_data_path / f'soil_co2_{self.crop}_train.parquet'},
+            {'file_name': 'tas_', 'path': self.raw_data_path / f'tas_{self.crop}_train.parquet'},
+            {'file_name': 'tasmin_', 'path': self.raw_data_path / f'tasmin_{self.crop}_train.parquet'},
+            {'file_name': 'tasmax_', 'path': self.raw_data_path / f'tasmax_{self.crop}_train.parquet'},
+            {'file_name': 'rsds_', 'path': self.raw_data_path / f'rsds_{self.crop}_train.parquet'},
+            {'file_name': '', 'path': self.raw_data_path / f'train_solutions_{self.crop}.parquet'}
         ]
         
         dfs = []
@@ -36,11 +39,10 @@ class Preprocessing:
         
         print("data_loaded !")    
         return pd.concat(dfs, axis=1)
-    
-    
+     
     ### Compression function to save RAM ###
 
-    def compress(df, **kwargs):
+    def compress(self, df):
         """
         Reduces the size of the DataFrame by 
         1. downcasting numerical columns
@@ -95,7 +97,7 @@ class Preprocessing:
     
     ### Basic feature engineering ###
 
-    def feature_engineering(X: pd.DataFrame)-> pd.DataFrame:
+    def feature_engineering(self, X: pd.DataFrame)-> pd.DataFrame:
     
         #1 Hydrométrie (total annuel, moyenne, min et max, 30j glissant?) -> 9 features
         pr_columns = [col for col in X.columns if col.startswith('pr_')]
@@ -126,7 +128,6 @@ class Preprocessing:
         # - Tropical : [70, 90] ou [-90, -70]
         # - Tempered : [50, 70[ ou ]-70, -50]
         # - Tropical : Sinon (inclut implicitement 0-50)
-        
         lat_abs = X['lat'].abs()
         
         conditions = [
@@ -134,17 +135,34 @@ class Preprocessing:
             (lat_abs >= 50) & (lat_abs < 70)
         ]
         
-        choices = ['tropical', 'Tempered']
+        choices = ['Tropical', 'Tempered']
         
-        region = pd.Series(np.select(conditions, choices, default='tropical'), 
+        region = pd.Series(np.select(conditions, choices, default='Tropical'), 
                         index=X.index, name='region')
         
+        ohe = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+        region_encoded = pd.DataFrame(ohe.fit_transform(region.values.reshape(-1, 1)), 
+                                      columns=ohe.get_feature_names_out(['region']))
+
+        #5 Année 
         year = X['real_year']
 
+        #6 texture sol
+        
+        texture_class = X[['texture_class']]
+        texture = pd.DataFrame(ohe.fit_transform(texture_class), 
+                               columns=ohe.get_feature_names_out(['texture_class']))
+        
+        #7 Features non modifiées
+        constant = X[['lon', 'lat', 'season_year']]
+
+        #8 tout le reste
+        X_raw_features = X.iloc[:, 6:]
+
         # Returning featured df 
-        X = pd.concat([year, mean_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
+        X = pd.concat([year, constant, texture, mean_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
                     mean_tas,min_tas,max_tas,
-                    mean_rsds, sum_rsds,min_rsds,max_rsds, region], axis=1)
+                    mean_rsds, sum_rsds,min_rsds,max_rsds, region_encoded, X_raw_features], axis=1)
         return X
     
     ### Train/val split ###
@@ -168,7 +186,7 @@ class Preprocessing:
     
     ### Scaling functions ###
     
-    def robust_scaling(X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
+    def robust_scaling(self, X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
     
         X_train = X.loc[X.index < cutoff_date]
         X_val = X.loc[X.index >= cutoff_date]
@@ -177,7 +195,7 @@ class Preprocessing:
         X_val_scaled = rb_scaler.transform(X_val)
         return X_train_scaled, X_val_scaled
     
-    def standard_scaling(X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
+    def standard_scaling(self, X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
 
         X_train = X.loc[X.index < cutoff_date]
         X_val = X.loc[X.index >= cutoff_date]
@@ -186,7 +204,7 @@ class Preprocessing:
         X_val_scaled = std_scaler.transform(X_val)
         return X_train_scaled, X_val_scaled
     
-    def minmax_scaling(X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
+    def minmax_scaling(self, X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
 
         X_train = X.loc[X.index < cutoff_date]
         X_val = X.loc[X.index >= cutoff_date]
@@ -206,9 +224,13 @@ class Preprocessing:
         """Export in CSV on a local dir"""
         print(f"Saving processed data in {self.processed_data_path}...")
         X_train.to_csv(self.processed_data_path / "X_train.csv", index=False)
+        print (f"X_train saved! and is of shape: {X_train.shape}")
         X_val.to_csv(self.processed_data_path / "X_val.csv", index=False)
+        print (f"X_val saved! and is of shape: {X_val.shape}")
         y_train.to_csv(self.processed_data_path / "y_train.csv", index=False)
+        print (f"y_train saved! and is of shape: {y_train.shape}")
         y_val.to_csv(self.processed_data_path / "y_val.csv", index=False)
+        print (f"y_val saved! and is of shape: {y_val.shape}")
         print("Done")
 
     ### Running it all ###
@@ -241,10 +263,8 @@ class Preprocessing:
         self.save_data(X_train, X_val, y_train, y_val)
 
 
-
-
 if __name__ == "__main__":
     
-    preproc = Preprocessing(raw_data_path='raw_data', processed_data_path='processed_data')
-    # Lance le pipeline (vérifie si ça existe avant de calculer)
+    preproc = Preprocessing(raw_data_path='raw_data', processed_data_path='processed_data', crop='wheat')
+    
     preproc.run_pipeline(cutoff_year=2010, force_reload=True)

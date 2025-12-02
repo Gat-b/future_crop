@@ -7,7 +7,7 @@ from pathlib import Path
 
 class Preprocessing:
 
-    def __init__(self, raw_data_path='raw_data', processed_data_path='processed_data', crop='wheat'):
+    def __init__(self, raw_data_path='../raw_data', processed_data_path='../processed_data', crop='wheat'):
         
         self.raw_data_path = Path(raw_data_path)
         self.processed_data_path = Path(processed_data_path)
@@ -320,6 +320,6 @@ class Preprocessing:
 
 if __name__ == "__main__":
     
-    preproc = Preprocessing(raw_data_path='raw_data', processed_data_path='processed_data', crop='wheat')
+    preproc = Preprocessing(raw_data_path='../raw_data', processed_data_path='../processed_data', crop='wheat')
     
     preproc.run_pipeline(cutoff_year=2010, force_reload=True)

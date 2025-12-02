@@ -45,6 +45,12 @@ class DataVisualization:
         """
         is_conf = isinstance(upper, np.ndarray) and isinstance(lower, np.ndarray)
 
+        ##### ADDED BY MLS #####
+
+        y_test.index = y_test.index +len(y_train)
+
+        ########################
+
         y_pred_series = pd.Series(y_pred, index=y_test.index)
         y_train_series = y_train.copy()
         y_test_series = y_test.copy()
@@ -52,7 +58,7 @@ class DataVisualization:
         plt.figure(figsize=(10, 4))
         plt.plot(y_train_series, label="Train")
         plt.plot(y_test_series, label="Test", color="black")
-        plt.plot(y_pred_series, label="Prediction", color="tab:orange")
+        plt.plot(y_pred_series, label="Prediction", color="orange")
 
         if is_conf:
             plt.fill_between(

@@ -17,7 +17,7 @@ class Preprocessing:
     
     ### Data loader - only local for now ###
     
-    def load_raw_data(self):
+    def load_raw_data(self) -> pd.DataFrame:
         """Charge et merge les fichiers parquet bruts."""
         print("Loading raw data...")
         wheat_train_datasets = [
@@ -42,7 +42,7 @@ class Preprocessing:
      
     ### Compression function to save RAM ###
 
-    def compress(self, df):
+    def compress(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Reduces the size of the DataFrame by 
         1. downcasting numerical columns
@@ -131,8 +131,8 @@ class Preprocessing:
         lat_abs = X['lat'].abs()
         
         conditions = [
-            (lat_abs >= 70) & (lat_abs <= 90),
-            (lat_abs >= 50) & (lat_abs < 70)
+            (lat_abs >= 66) & (lat_abs <= 90),
+            (lat_abs >= 23) & (lat_abs < 66)
         ]
         
         choices = ['Tropical', 'Tempered']
@@ -145,6 +145,7 @@ class Preprocessing:
                                       columns=ohe.get_feature_names_out(['region']))
 
         #5 Année 
+        region_encoded.index = X.index
         year = X['real_year']
 
         #6 texture sol
@@ -152,6 +153,7 @@ class Preprocessing:
         texture_class = X[['texture_class']]
         texture = pd.DataFrame(ohe.fit_transform(texture_class), 
                                columns=ohe.get_feature_names_out(['texture_class']))
+        texture.index = X.index
         
         #7 Features non modifiées
         constant = X[['lon', 'lat', 'season_year']]
@@ -167,7 +169,7 @@ class Preprocessing:
     
     ### Train/val split ###
 
-    def split_data(self, X, y, cutoff_year=2010):
+    def split_data(self, X: pd.DataFrame, y: pd.DataFrame, cutoff_year=2010) -> tuple:
         """
         Divide data based on a cutoff year.
         """
@@ -177,7 +179,9 @@ class Preprocessing:
 
         print(f"Splitting data with cutoff year: {cutoff_year}")
         mask_train = X['real_year'] < cutoff_year
+        print(mask_train)
         mask_val = X['real_year'] >= cutoff_year
+        print(mask_val)
 
         X_train, X_val = X[mask_train], X[mask_val]
         y_train, y_val = y[mask_train], y[mask_val]
@@ -186,36 +190,84 @@ class Preprocessing:
     
     ### Scaling functions ###
     
-    def robust_scaling(self, X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
-    
-        X_train = X.loc[X.index < cutoff_date]
-        X_val = X.loc[X.index >= cutoff_date]
-        rb_scaler = RobustScaler()
-        X_train_scaled = rb_scaler.fit_transform(X_train)
-        X_val_scaled = rb_scaler.transform(X_val)
-        return X_train_scaled, X_val_scaled
-    
-    def standard_scaling(self, X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
+    def custom_scaling(self, X_train: pd.DataFrame, X_val: pd.DataFrame) -> tuple:
+        """
+        Applies different scalers to different column groups:
+        - RobustScaler -> 'pr' columns (precipitation)
+        - MinMaxScaler -> 'rsds' columns (solar radiation)
+        - StandardScaler -> 'tas', 'tasmin', 'tasmax' columns (temperature)
+        - Passthrough -> others (lat, lon, encoded features, etc.)
+        """
+        print("Applying custom scaling...")
+        
+        # 1. Identify columns by group
 
-        X_train = X.loc[X.index < cutoff_date]
-        X_val = X.loc[X.index >= cutoff_date]
-        std_scaler = StandardScaler()
-        X_train_scaled = std_scaler.fit_transform(X_train)
-        X_val_scaled = std_scaler.transform(X_val)
-        return X_train_scaled, X_val_scaled
-    
-    def minmax_scaling(self, X: pd.DataFrame, cutoff_date: int) -> pd.DataFrame:
+        cols_pr = [c for c in X_train.columns if 'pr' in c]
+        cols_rsds = [c for c in X_train.columns if 'rsds' in c]
+        cols_tas = [c for c in X_train.columns if 'tas' in c]
 
-        X_train = X.loc[X.index < cutoff_date]
-        X_val = X.loc[X.index >= cutoff_date]
-        minmax_scaler = MinMaxScaler()
-        X_train_scaled = minmax_scaler.fit_transform(X_train)
-        X_val_scaled = minmax_scaler.transform(X_val)
+        col_lat = ['lat']
+        
+        # All other columns are kept as is
+        cols_passthrough = [c for c in X_train.columns if c not in cols_pr + cols_rsds + cols_tas + col_lat]
+
+        # 2. Initialize Scalers
+        scaler_pr = RobustScaler()
+        scaler_rsds = MinMaxScaler()
+        scaler_tas = StandardScaler()
+
+        # 3. Fit & Transform (returns Numpy arrays, so we rebuild DataFrames)
+        
+        # robust_scaling_pr
+        if cols_pr:
+            train_pr = pd.DataFrame(scaler_pr.fit_transform(X_train[cols_pr]), 
+                                    columns=cols_pr, index=X_train.index)
+            val_pr = pd.DataFrame(scaler_pr.transform(X_val[cols_pr]), 
+                                  columns=cols_pr, index=X_val.index)
+        else:
+            train_pr, val_pr = pd.DataFrame(), pd.DataFrame()  #le bloc Else pour éviter tout plantage si pas de donnée pr --> crée un df vide que le .concat va ignorer.
+
+        # minmax scaling rsds
+        if cols_rsds:
+            train_rsds = pd.DataFrame(scaler_rsds.fit_transform(X_train[cols_rsds]), 
+                                      columns=cols_rsds, index=X_train.index)
+            val_rsds = pd.DataFrame(scaler_rsds.transform(X_val[cols_rsds]), 
+                                    columns=cols_rsds, index=X_val.index)
+        else:
+            train_rsds, val_rsds = pd.DataFrame(), pd.DataFrame()
+
+        # std sclaing temperature data
+        if cols_tas:
+            train_tas = pd.DataFrame(scaler_tas.fit_transform(X_train[cols_tas]), 
+                                     columns=cols_tas, index=X_train.index)
+            val_tas = pd.DataFrame(scaler_tas.transform(X_val[cols_tas]), 
+                                   columns=cols_tas, index=X_val.index)
+        else:
+            train_tas, val_tas = pd.DataFrame(), pd.DataFrame()
+
+        if col_lat:
+            train_lat = pd.DataFrame(np.cos(X_train[col_lat]/90), columns=col_lat, index=X_train.index)
+            val_lat = pd.DataFrame(np.cos(X_val[col_lat]/90), columns=col_lat, index=X_train.index)
+        else:
+            train_lat, val_lat = pd.DataFrame(), pd.DataFrame()
+
+        # left it as is
+        train_pass = X_train[cols_passthrough]
+        val_pass = X_val[cols_passthrough]
+
+        # 4. Concatenate back
+        X_train_scaled = pd.concat([train_pass, train_pr, train_rsds, train_tas, train_lat], axis=1)
+        X_val_scaled = pd.concat([val_pass, val_pr, val_rsds, val_tas, val_lat], axis=1)
+        
+        # Ensure same column order as input df
+        X_train_scaled = X_train_scaled[X_train.columns]
+        X_val_scaled = X_val_scaled[X_val.columns]
+
         return X_train_scaled, X_val_scaled
 
     ### Saving and checking data ###
 
-    def check_processed_files(self, prefix="train"):
+    def check_processed_files(self, prefix="train") -> bool:
         """check if files already exists and processed"""
         files = ['X_train.csv', 'X_val.csv', 'y_train.csv', 'y_val.csv']
         return all((self.processed_data_path / f"{prefix}_{f}").exists() for f in files)
@@ -258,6 +310,7 @@ class Preprocessing:
         X_train, X_val, y_train, y_val = self.split_data(X_features, y, cutoff_year=cutoff_year)
         
         # 5. Scaling 
+        X_train, X_val = self.custom_scaling(X_train, X_val)
                 
         # 6. Save
         self.save_data(X_train, X_val, y_train, y_val)

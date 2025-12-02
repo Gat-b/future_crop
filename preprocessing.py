@@ -143,9 +143,10 @@ class Preprocessing:
         ohe = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
         region_encoded = pd.DataFrame(ohe.fit_transform(region.values.reshape(-1, 1)), 
                                       columns=ohe.get_feature_names_out(['region']))
+        
+        region_encoded.index = X.index
 
         #5 Année 
-        region_encoded.index = X.index
         year = X['real_year']
 
         #6 texture sol
@@ -179,9 +180,7 @@ class Preprocessing:
 
         print(f"Splitting data with cutoff year: {cutoff_year}")
         mask_train = X['real_year'] < cutoff_year
-        print(mask_train)
         mask_val = X['real_year'] >= cutoff_year
-        print(mask_val)
 
         X_train, X_val = X[mask_train], X[mask_val]
         y_train, y_val = y[mask_train], y[mask_val]

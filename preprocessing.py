@@ -125,7 +125,7 @@ class Preprocessing:
         max_rsds = X[rsds_columns].max(axis=1).rename('max_rsds')
 
         #4 Découpage Géo
-        # - Tropical : [70, 90] ou [-90, -70]
+        # - Polar : [70, 90] ou [-90, -70]
         # - Tempered : [50, 70[ ou ]-70, -50]
         # - Tropical : Sinon (inclut implicitement 0-50)
         lat_abs = X['lat'].abs()
@@ -135,7 +135,7 @@ class Preprocessing:
             (lat_abs >= 23) & (lat_abs < 66)
         ]
         
-        choices = ['Tropical', 'Tempered']
+        choices = ['Polar', 'Tempered']
         
         region = pd.Series(np.select(conditions, choices, default='Tropical'), 
                         index=X.index, name='region')
@@ -154,7 +154,7 @@ class Preprocessing:
         texture = pd.DataFrame(ohe.fit_transform(texture_class), 
                                columns=ohe.get_feature_names_out(['texture_class']))
         texture.index = X.index
-        
+
         #7 Features non modifiées
         constant = X[['lon', 'lat', 'season_year']]
 

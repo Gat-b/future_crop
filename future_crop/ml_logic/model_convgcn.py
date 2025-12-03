@@ -1,6 +1,9 @@
-from keras import Model, Sequential, layers, regularizers, optimizers
-from keras.layers import Input, ConvLSTM2D, Conv1D, Flatten, Dense, MaxPooling3D
+import numpy as np
+
+from keras import Model
+from keras.layers import Input, Lambda, TimeDistributed, ConvLSTM2D, Conv1D, Flatten, Dense, MaxPooling3D
 from keras.callbacks import EarlyStopping
+
 
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
@@ -54,11 +57,14 @@ def build_adjacency(edges, N):
         adjacency[i, j] = 1
         adjacency[j, i] = 1
 
+    # Convertir en coo_matrix pour récupérer row/col/data
+    adjacency_coo = adjacency.tocoo()
+
     # Conversion en SparseTensor TensorFlow
     adjacency_tf = tf.sparse.SparseTensor(
-        indices=np.array([adjacency.row, adjacency.col]).T,
-        values=adjacency.data.astype(np.float32),
-        dense_shape=adjacency.shape
+        indices=np.vstack((adjacency_coo.row, adjacency_coo.col)).T,
+        values=adjacency_coo.data.astype(np.float32),
+        dense_shape=adjacency_coo.shape
     )
     adjacency_tf = tf.sparse.reorder(adjacency_tf)
 
@@ -67,7 +73,7 @@ def build_adjacency(edges, N):
 
 def conv1d_gcn_model(X_lat_lon, X_time):
     '''
-    Transforamtion des données temporelles de chaque point en embedding vectoriel
+    Transformation des données temporelles de chaque point en embedding vectoriel
     '''
 
     assert X_time.shape[1:] == (240,8)
@@ -81,9 +87,11 @@ def conv1d_gcn_model(X_lat_lon, X_time):
     # CONV1D model : Embedding de X_time
     X_in = Input(X_time.shape[1:])  # (240, 8)
     x = Conv1D(64, kernel_size=5, activation='relu', padding='same')(X_in)
-    x = Conv1D(64, kernel_size=5, activation='relu', padding='same')(x)
-    x = Flatten()(x)
-    X_time_emb = Dense(64, activation='relu')(x)
+    X_time_emb = Conv1D(64, kernel_size=5, activation='relu', padding='same')(x)
+
+
+    # x = Flatten()(x)
+    # X_time_emb = Dense(64, activation='relu')(x)
 
     #GCN model
     # Analogie ligne par ligne :
@@ -92,8 +100,7 @@ def conv1d_gcn_model(X_lat_lon, X_time):
     # 3. Prédiction des rendements
     H = GCNConv(64, activation='relu')([X_time_emb, A])
     H = GCNConv(32, activation='relu')([H, A])
-    out = Dense(1)(H)
+    out = Dense(1, activation='relu')(H)
 
     model = Model(inputs=X_in, outputs=out)
     return model
-

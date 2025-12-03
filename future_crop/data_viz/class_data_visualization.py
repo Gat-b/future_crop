@@ -45,6 +45,12 @@ class DataVisualization:
         """
         is_conf = isinstance(upper, np.ndarray) and isinstance(lower, np.ndarray)
 
+        ##### ADDED BY MLS #####
+
+        y_test.index = y_test.index + len(y_train)
+
+        ########################
+
         y_pred_series = pd.Series(y_pred, index=y_test.index)
         y_train_series = y_train.copy()
         y_test_series = y_test.copy()

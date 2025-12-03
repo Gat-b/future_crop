@@ -20,3 +20,17 @@ def compute_baseline(y_train : pd.Series , length : int) -> pd.Series:
     forecast = arima.forecast(length, alpha = 0.05)
 
     return forecast
+
+def dummy_baseline(y_train : pd.Series , length : int) -> pd.Series:
+    '''
+    function takes a pd.Series and computes the dummy baseline
+    i.e. the mean of the y_train values
+
+    it should be used as follows :
+    dummy_baseline(y_train, len(y_test))
+
+    '''
+
+    y_dummy = np.full(length,y_train.mean())
+
+    return y_dummy

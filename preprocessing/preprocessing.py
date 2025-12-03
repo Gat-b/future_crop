@@ -238,6 +238,8 @@ class Preprocessing_ml:
         cols_rsds = [c for c in df_fit.columns if 'rsds' in c]
         cols_tas = [c for c in df_fit.columns if 'tas' in c] # inclut tas, tasmin, tasmax
         cols_geo = ['lat', 'lon']
+        cols_co2 = ['soil_co2_co2', 'soil_co2_nitrogen']
+
         # Scalers
         scalers = {
             'pr': (RobustScaler(), cols_pr),
@@ -341,5 +343,5 @@ if __name__ == "__main__":
     # CAS 3 : Exploration Wheat (Train/Val split)
     preproc.run_exploration(crops=['wheat'], cutoff_year=2010)
 
-g    # CAS 4 : Exploration All crops
+    # CAS 4 : Exploration All crops
     # preproc.run_exploration(crops=['wheat', 'maize'], cutoff_year=2010)

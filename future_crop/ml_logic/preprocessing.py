@@ -21,7 +21,7 @@ class Preprocessing_ml:
         file (str): The file type (e.g., 'train').
     """
 
-    def __init__(self, raw_data_path='../raw_data', processed_data_path='../processed_data'):
+    def __init__(self, raw_data_path='../../raw_data', processed_data_path='../../processed_data'):
         
         self.raw_data_path = Path(raw_data_path)
         self.processed_data_path = Path(processed_data_path)       
@@ -358,7 +358,7 @@ class Preprocessing_ml:
 
 if __name__ == "__main__":
     
-    preproc = Preprocessing_ml(raw_data_path='raw_data', processed_data_path='processed_data')
+    preproc = Preprocessing_ml()
     
     # CAS 1 : Tout générer pour la prod (6 fichiers)
     # preproc.run_production(crops=['wheat', 'maize'])

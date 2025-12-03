@@ -128,7 +128,7 @@ class Preprocessing_ml:
         max_pr = X[pr_columns].max(axis=1).rename('max_pr')
         
         #2 Températures (min, max, moyenne - annuelles/ glissants? - 10 jours pour le gel?) -> 27 features
-        tas_columns = [col for col in X.columns if col.startswith('tas_')]
+        tas_columns = [col for col in X.columns if col.startswith('tas_') and 'tasmin' not in col and 'tasmax' not in col]
         mean_tas = X[tas_columns].mean(axis=1).rename('mean_tas')
         median_tas = X[tas_columns].median(axis=1).rename('median_tas')
         min_tas = X[tas_columns].min(axis=1).rename('min_tas')

@@ -2,6 +2,7 @@
 raw_data/
 notebook/
 test/
+processed_data/
 
 # Autres
 *.ipynb

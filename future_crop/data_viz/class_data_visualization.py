@@ -58,7 +58,7 @@ class DataVisualization:
         plt.figure(figsize=(10, 4))
         plt.plot(y_train_series, label="Train")
         plt.plot(y_test_series, label="Test", color="black")
-        plt.plot(y_pred_series, label="Prediction", color="tab:orange")
+        plt.plot(y_pred_series, label="Prediction", color="orange")
 
         if is_conf:
             plt.fill_between(

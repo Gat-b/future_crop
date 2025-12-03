@@ -7,43 +7,6 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 
 
-model_dict = {
-    'DecisionTreeRegressor': DecisionTreeRegressor(),
-    'GradientBoostingRegressor': GradientBoostingRegressor(),
-    'AdaBoostRegressor': AdaBoostRegressor(),
-    'RandomForestRegressor': RandomForestRegressor(),
-    'XGBRegressor': XGBRegressor(),
-    'LightGBM': LGBMRegressor(),
-    'Catboost': CatBoostRegressor()
-    }
-
-params_dict={
-    'DecisionTreeRegressor': {'max_depth': [3, 5, 10, 20],
-                            'min_samples_split': [2, 5, 10, 20],
-                            'min_samples_leaf': [1, 2, 5, 10],
-                            },
-    'GradientBoostingRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                                'max_depth': [3, 5, 10, 20],
-                                'n_estimators': [10, 50, 100]},
-    'AdaBoostRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                        'n_estimators': [10, 50, 100],
-                        },
-    'RandomForestRegressor': {'max_depth': [3, 5, 10, 20],
-                            'min_samples_split': [2, 5, 10, 20],
-                            'min_samples_leaf': [1, 2, 5, 10],
-                            'n_estimators': [10, 50, 100],
-                            },
-    'XGBRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                    'max_depth': [3, 5, 10, 20],
-                    'n_estimators': [10, 50, 100]},
-    'LightGBM': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                    'max_depth': [-1, 3, 5, 10, 20],
-                    'n_estimators': [10, 50, 100]},
-    'Catboost': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                    'max_depth': [3, 5, 10, 20],
-                    'n_estimators': [10, 50, 100]}
-    }
-
 
 def model_selection(X, y, model_dict, params_dict):
     """

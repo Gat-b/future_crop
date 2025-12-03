@@ -341,5 +341,5 @@ if __name__ == "__main__":
     # CAS 3 : Exploration Wheat (Train/Val split)
     preproc.run_exploration(crops=['wheat'], cutoff_year=2010)
 
-    # CAS 4 : Exploration All crops
+g    # CAS 4 : Exploration All crops
     # preproc.run_exploration(crops=['wheat', 'maize'], cutoff_year=2010)

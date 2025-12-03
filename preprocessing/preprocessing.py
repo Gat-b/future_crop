@@ -238,10 +238,12 @@ class Preprocessing_ml:
         cols_rsds = [c for c in df_fit.columns if 'rsds' in c]
         cols_tas = [c for c in df_fit.columns if 'tas' in c] # inclut tas, tasmin, tasmax
         cols_geo = ['lat', 'lon']
+        cols_co2 = ['soil_co2_co2', 'soil_co2_nitrogen']
         
         # Scalers
         scalers = {
             'pr': (RobustScaler(), cols_pr),
+            'co2': (RobustScaler(), cols_co2),
             'rsds': (MinMaxScaler(), cols_rsds),
             'tas': (StandardScaler(), cols_tas)
         }

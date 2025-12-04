@@ -55,7 +55,21 @@ simon_params_dict = {}
 gat_model_dict = {}
 gat_params_dict = {}
 
-greg_model_dict = {key: model_dict[key] for key in ['XGBRegressor', 'LightGBM', 'Catboost']}
+greg_model_dict = {'XGBRegressor': XGBRegressor(
+        tree_method='hist',      # Optimized histogram algorithm
+        device='cuda',           # Explicitly use NVIDIA CUDA
+        n_jobs=-1
+    ),
+    'LightGBM': LGBMRegressor(
+        device='gpu',            # Enable GPU training
+        n_jobs=-1
+    ),
+    'Catboost': CatBoostRegressor(
+        task_type='GPU',         # Crucial for CatBoost
+        devices='1',             # Use the first GPU
+        verbose=0
+    )
+}
 greg_params_dict = {key: params_dict[key] for key in ['XGBRegressor', 'LightGBM', 'Catboost']}
 
 mat_model_dict = {}

@@ -33,8 +33,8 @@ class Preprocessing_ml:
         """Charge et merge les fichiers parquet bruts."""
         print(f"Loading raw data for {crop} {mode}...")
         crop_train_datasets = [
-            {'file_name': 'pr_', 'path': self.raw_data_path / f'pr_{crop}_{mode}.parquet'},
             {'file_name': 'soil_co2_', 'path': self.raw_data_path / f'soil_co2_{crop}_{mode}.parquet'},
+            {'file_name': 'pr_', 'path': self.raw_data_path / f'pr_{crop}_{mode}.parquet'},
             {'file_name': 'tas_', 'path': self.raw_data_path / f'tas_{crop}_{mode}.parquet'},
             {'file_name': 'tasmin_', 'path': self.raw_data_path / f'tasmin_{crop}_{mode}.parquet'},
             {'file_name': 'tasmax_', 'path': self.raw_data_path / f'tasmax_{crop}_{mode}.parquet'},
@@ -193,16 +193,34 @@ class Preprocessing_ml:
         #7 Features non modifiées
         constant = X[['lon', 'lat', 'season_year']]
 
+        #8 encode la région du monde
+        mask_usa = (X['lon'] >= -125) & (X['lon'] <= -66) & (X['lat'] >= 24) & (X['lat'] <= 60)
+        mask_sa = (X['lon'] >= -80) & (X['lon'] <= -35) & (X['lat'] >= -50) & (X['lat'] <= -10)
+        mask_eu_ru = (X['lon'] >= -10) & (X['lon'] <= 90) & (X['lat'] >= 20) & (X['lat'] <= 66)
+        mask_china = (X['lon'] >= 95) & (X['lon'] <= 125) & (X['lat'] >= 20) & (X['lat'] <= 40)
+
+        conditions_geo = [mask_usa, mask_sa, mask_eu_ru, mask_china]
+        choices_geo = ['USA', 'South America', 'Europe and Russia', 'China']
+
+        # Création de la colonne
+        geo_region = pd.Series(np.select(conditions_geo, choices_geo, default='Other'),
+                               index=X.index, name='geo_region')
+
+        # Encodage OneHot (Indispensable pour le ML)
+        geo_encoded = pd.DataFrame(ohe.fit_transform(geo_region.values.reshape(-1, 1)),
+                                   columns=ohe.get_feature_names_out(['geo_region']),
+                                   index=X.index)
+
         #8 tout le reste
         X_raw_features = X.iloc[:, 6:]
 
         # Returning featured df 
-        X = pd.concat([year, constant, texture, mean_pr,median_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
+        X = pd.concat([year, geo_region, constant, texture, mean_pr,median_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
                     mean_tas, median_tas, min_tas, max_tas,
                     mean_rsds, median_rsds, sum_rsds,min_rsds,max_rsds, 
                     mean_tasmin, median_tasmin, sum_tasmin,min_tasmin,max_tasmin,
                     mean_tasmax, median_tasmax, sum_tasmax,min_tasmax,max_tasmax,
-                    region_encoded, X_raw_features], axis=1)
+                    region_encoded, geo_encoded, X_raw_features], axis=1)
         return X
     
     ### premier aggrégation du jeu de données ###
@@ -257,7 +275,7 @@ class Preprocessing_ml:
         
         # Traitement spécifique Geo (Cos transformation)
         if all(c in df_fit.columns for c in cols_geo):
-             X_scaled[cols_geo] = np.cos(df_transform[cols_geo] / 90)
+            X_scaled[cols_geo] = np.cos(df_transform[cols_geo] / 90)
 
         return X_scaled
 
@@ -367,7 +385,7 @@ if __name__ == "__main__":
     # preproc.run_production(crops=['wheat'])
     
     # CAS 3 : Exploration Wheat (Train/Val split)
-    preproc.run_exploration(crops=['wheat'], cutoff_year=2010)
+    preproc.run_exploration(crops=['wheat'], cutoff_year=2010, force_reload=True)
     
     # CAS 4 : Exploration All crops
     # preproc.run_exploration(crops=['wheat', 'maize'], cutoff_year=2010)

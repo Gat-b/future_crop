@@ -20,7 +20,7 @@ model_dict = {
 # params dict GridSearch
 params_dict_grid={
     'DecisionTreeRegressor': {'max_depth': [3, 5, 10, 18],
-                            'min_samples_split': [2, 5, 10,],
+                            'min_samples_split': [2, 5, 10],
                             'min_samples_leaf': [1, 2, 5, 10],
                             },
     'GradientBoostingRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],

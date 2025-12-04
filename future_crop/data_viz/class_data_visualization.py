@@ -47,7 +47,7 @@ class DataVisualization:
 
         ##### ADDED BY MLS #####
 
-        y_test.index = y_test.index + len(y_train)
+        y_test.index = range(len(y_train), len(y_train) + len(y_test))
 
         ########################
 

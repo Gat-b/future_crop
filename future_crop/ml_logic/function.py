@@ -45,7 +45,8 @@ def model_selection(X, y, model_dict, params_dict):
         grid = GridSearchCV(estimator= model,
                             param_grid=params,
                             cv=tscv,
-                            n_jobs=-1,
+                            n_jobs=2,
+                            pre_dispatch='2*n_jobs',
                             scoring='neg_root_mean_squared_error',
                             verbose=2)
 

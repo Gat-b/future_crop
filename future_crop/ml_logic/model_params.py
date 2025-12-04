@@ -17,22 +17,50 @@ model_dict = {
     'Catboost': CatBoostRegressor()
     }
 
-# params dict
-params_dict={
+# params dict GridSearch
+params_dict_grid={
     'DecisionTreeRegressor': {'max_depth': [3, 5, 10, 18],
-                            'min_samples_split': [2, 5, 10, 20],
+                            'min_samples_split': [2, 5, 10,],
                             'min_samples_leaf': [1, 2, 5, 10],
                             },
     'GradientBoostingRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                                'max_depth': [3, 5, 10, 20],
-                                'n_estimators': [10, 50, 100]},
+                                'max_depth': [5, 10, 20],
+                                'n_estimators': [10, 30, 50]},
     'AdaBoostRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                         'n_estimators': [10, 50, 100],
                         },
-    'RandomForestRegressor': {'max_depth': [3, 5, 10, 20],
-                            'min_samples_split': [2, 5, 10, 20],
+    'RandomForestRegressor': {'max_depth': [15, 20],
+                            'min_samples_split': [2, 5],
+                            'min_samples_leaf': [3, 5],
+                            'n_estimators': [100, 150],
+                            },
+    'XGBRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+                    'max_depth': [3, 5, 10, 18],
+                    'n_estimators': [10, 50, 100]},
+    'LightGBM': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+                    'max_depth': [3, 5, 10, 18],
+                    'n_estimators': [10, 50, 100]},
+    'Catboost': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+                    'max_depth': [3, 5, 10, 20],
+                    'n_estimators': [10, 50, 100]}
+    }
+
+# params dict RandomizeSearch
+params_dict_rando={
+    'DecisionTreeRegressor': {'max_depth': [3, 5, 10, 18],
+                            'min_samples_split': [2, 5, 10,],
                             'min_samples_leaf': [1, 2, 5, 10],
-                            'n_estimators': [10, 50, 100],
+                            },
+    'GradientBoostingRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+                                'max_depth': [5, 10, 20],
+                                'n_estimators': [10, 30, 50]},
+    'AdaBoostRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+                        'n_estimators': [10, 50, 100],
+                        },
+    'RandomForestRegressor': {'max_depth': [None, 15, 20, 25],
+                            'min_samples_split': [2, 5, 10],
+                            'min_samples_leaf': [3, 5, 10],
+                            'n_estimators': [50, 100, 200, 300],
                             },
     'XGBRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                     'max_depth': [3, 5, 10, 18],
@@ -46,8 +74,8 @@ params_dict={
     }
 
 # custom dict
-adri_model_dict = {key: model_dict[key] for key in ['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor']}
-adri_params_dict = {key: params_dict[key] for key in ['RandomForestRegressor', 'GradientBoostingRegressor', 'AdaBoostRegressor']}
+adri_model_dict = {key: model_dict[key] for key in ['RandomForestRegressor']}
+adri_params_dict = {key: params_dict_rando[key] for key in ['RandomForestRegressor']}
 
 simon_model_dict = {}
 simon_params_dict = {}
@@ -55,8 +83,22 @@ simon_params_dict = {}
 gat_model_dict = {}
 gat_params_dict = {}
 
-greg_model_dict = {key: model_dict[key] for key in ['XGBRegressor', 'LightGBM', 'Catboost']}
-greg_params_dict = {key: params_dict[key] for key in ['XGBRegressor', 'LightGBM', 'Catboost']}
+greg_model_dict = {'XGBRegressor': XGBRegressor(
+        tree_method='hist',      # Optimized histogram algorithm
+        device='cuda',           # Explicitly use NVIDIA CUDA
+        n_jobs=-1
+    ),
+    'LightGBM': LGBMRegressor(
+        device='gpu',            # Enable GPU training
+        n_jobs=-1
+    ),
+    'Catboost': CatBoostRegressor(
+        task_type='GPU',         # Crucial for CatBoost
+        devices='1',             # Use the first GPU
+        verbose=0
+    )
+}
+greg_params_dict = {key: params_dict_grid[key] for key in ['XGBRegressor', 'LightGBM', 'Catboost']}
 
 mat_model_dict = {}
 mat_params_dict = {}

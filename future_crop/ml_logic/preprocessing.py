@@ -3,35 +3,50 @@ import numpy as np
 import os
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, OneHotEncoder
 from pathlib import Path
+import gc
 
 
-class Preprocessing:
+class Preprocessing_ml:
+    """
+    A class for preprocessing data for a machine learning model.
 
-    def __init__(self, raw_data_path='raw_data', processed_data_path='processed_data', crop='wheat'):
+    This class handles loading raw data, compressing it to save memory,
+    performing feature engineering, splitting the data into training and
+    validation sets, scaling the features, and saving the processed data.
+
+    Attributes:
+        raw_data_path (pathlib.Path): The path to the raw data directory.
+        processed_data_path (pathlib.Path): The path to the processed data directory.
+        crop (str): The type of crop (e.g., 'wheat').
+        file (str): The file type (e.g., 'train').
+    """
+
+    def __init__(self, raw_data_path='../raw_data', processed_data_path='../processed_data'):
         
         self.raw_data_path = Path(raw_data_path)
-        self.processed_data_path = Path(processed_data_path)
-        self.crop = crop
-        
+        self.processed_data_path = Path(processed_data_path)       
         self.processed_data_path.mkdir(parents=True, exist_ok=True)
     
     ### Data loader - only local for now ###
     
-    def load_raw_data(self) -> pd.DataFrame:
+    def load_raw_data(self, crop: str = 'wheat', mode: str = 'train') -> pd.DataFrame:
         """Charge et merge les fichiers parquet bruts."""
-        print("Loading raw data...")
-        wheat_train_datasets = [
-            {'file_name': 'pr_', 'path': self.raw_data_path / f'pr_{self.crop}_train.parquet'},
-            {'file_name': 'soil_co2_', 'path': self.raw_data_path / f'soil_co2_{self.crop}_train.parquet'},
-            {'file_name': 'tas_', 'path': self.raw_data_path / f'tas_{self.crop}_train.parquet'},
-            {'file_name': 'tasmin_', 'path': self.raw_data_path / f'tasmin_{self.crop}_train.parquet'},
-            {'file_name': 'tasmax_', 'path': self.raw_data_path / f'tasmax_{self.crop}_train.parquet'},
-            {'file_name': 'rsds_', 'path': self.raw_data_path / f'rsds_{self.crop}_train.parquet'},
-            {'file_name': '', 'path': self.raw_data_path / f'train_solutions_{self.crop}.parquet'}
-        ]
+        print(f"Loading raw data for {crop} {mode}...")
+        crop_train_datasets = [
+            {'file_name': 'pr_', 'path': self.raw_data_path / f'pr_{crop}_{mode}.parquet'},
+            {'file_name': 'soil_co2_', 'path': self.raw_data_path / f'soil_co2_{crop}_{mode}.parquet'},
+            {'file_name': 'tas_', 'path': self.raw_data_path / f'tas_{crop}_{mode}.parquet'},
+            {'file_name': 'tasmin_', 'path': self.raw_data_path / f'tasmin_{crop}_{mode}.parquet'},
+            {'file_name': 'tasmax_', 'path': self.raw_data_path / f'tasmax_{crop}_{mode}.parquet'},
+            {'file_name': 'rsds_', 'path': self.raw_data_path / f'rsds_{crop}_{mode}.parquet'}]
+
+        if mode == 'train':
+            crop_train_datasets.append(
+                {'file_name': '', 'path': self.raw_data_path / f'{mode}_solutions_{crop}.parquet'})
+        
         
         dfs = []
-        for file in wheat_train_datasets:
+        for file in crop_train_datasets:
             # Vérification basique si le fichier existe
             if not file['path'].exists():
                 raise FileNotFoundError(f"Fichier manquant : {file['path']}")
@@ -107,27 +122,46 @@ class Preprocessing:
         rolling_30_days_pr = rolling_30_days_pr.add_prefix('pr_roll30')
         
         mean_pr = X[pr_columns].mean(axis=1).rename('mean_pr')
+        median_pr = X[pr_columns].median(axis=1).rename('median_pr')
         sum_pr = X[pr_columns].sum(axis=1).rename('sum_pr')
         min_pr = X[pr_columns].min(axis=1).rename('min_pr')
         max_pr = X[pr_columns].max(axis=1).rename('max_pr')
         
         #2 Températures (min, max, moyenne - annuelles/ glissants? - 10 jours pour le gel?) -> 27 features
-        tas_columns = [col for col in X.columns if col.startswith('tas_')]
+        tas_columns = [col for col in X.columns if col.startswith('tas_') and 'tasmin' not in col and 'tasmax' not in col]
         mean_tas = X[tas_columns].mean(axis=1).rename('mean_tas')
+        median_tas = X[tas_columns].median(axis=1).rename('median_tas')
         min_tas = X[tas_columns].min(axis=1).rename('min_tas')
         max_tas = X[tas_columns].max(axis=1).rename('max_tas')
 
         #3 Ensoleillement (journalier, moyenne)
         rsds_columns = [col for col in X.columns if col.startswith('rsds_')]
         mean_rsds = X[rsds_columns].mean(axis=1).rename('mean_rsds')
+        median_rsds = X[rsds_columns].median(axis=1).rename('median_rsds')
         sum_rsds = X[rsds_columns].sum(axis=1).rename('sum_rsds')
         min_rsds = X[rsds_columns].min(axis=1).rename('min_rsds')
         max_rsds = X[rsds_columns].max(axis=1).rename('max_rsds')
 
-        #4 Découpage Géo
-        # - Polar : [70, 90] ou [-90, -70]
-        # - Tempered : [50, 70[ ou ]-70, -50]
-        # - Tropical : Sinon (inclut implicitement 0-50)
+        #4 tasmin
+        tasmin_columns = [col for col in X.columns if col.startswith('tasmin_')]
+        mean_tasmin = X[tasmin_columns].mean(axis=1).rename('mean_tasmin')
+        median_tasmin = X[tasmin_columns].median(axis=1).rename('median_tasmin')
+        sum_tasmin = X[tasmin_columns].sum(axis=1).rename('sum_tasmin')
+        min_tasmin = X[tasmin_columns].min(axis=1).rename('min_tasmin')
+        max_tasmin = X[tasmin_columns].max(axis=1).rename('max_tasmin')
+
+        #5 tasmax
+        tasmax_columns = [col for col in X.columns if col.startswith('tasmax_')]
+        mean_tasmax = X[tasmax_columns].mean(axis=1).rename('mean_tasmax')
+        median_tasmax = X[tasmax_columns].median(axis=1).rename('median_tasmax')
+        sum_tasmax = X[tasmax_columns].sum(axis=1).rename('sum_tasmax')
+        min_tasmax = X[tasmax_columns].min(axis=1).rename('min_tasmax')
+        max_tasmax = X[tasmax_columns].max(axis=1).rename('max_tasmax')
+
+        #6 Découpage Géo
+        # - Polar : [66, 90] ou [-90, -66]
+        # - Tempered : [23, 66[ ou ]-66, -23]
+        # - Tropical : Sinon (inclut implicitement 0-23)
         lat_abs = X['lat'].abs()
         
         conditions = [
@@ -163,160 +197,177 @@ class Preprocessing:
         X_raw_features = X.iloc[:, 6:]
 
         # Returning featured df 
-        X = pd.concat([year, constant, texture, mean_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
-                    mean_tas,min_tas,max_tas,
-                    mean_rsds, sum_rsds,min_rsds,max_rsds, region_encoded, X_raw_features], axis=1)
+        X = pd.concat([year, constant, texture, mean_pr,median_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
+                    mean_tas, median_tas, min_tas, max_tas,
+                    mean_rsds, median_rsds, sum_rsds,min_rsds,max_rsds, 
+                    mean_tasmin, median_tasmin, sum_tasmin,min_tasmin,max_tasmin,
+                    mean_tasmax, median_tasmax, sum_tasmax,min_tasmax,max_tasmax,
+                    region_encoded, X_raw_features], axis=1)
         return X
     
-    ### Train/val split ###
+    ### premier aggrégation du jeu de données ###
 
-    def split_data(self, X: pd.DataFrame, y: pd.DataFrame, cutoff_year=2010) -> tuple:
-        """
-        Divide data based on a cutoff year.
-        """
-              
-        if 'real_year' not in X.columns:
-             raise ValueError("'real_year' column is required for splitting the time searies data")
-
-        print(f"Splitting data with cutoff year: {cutoff_year}")
-        mask_train = X['real_year'] < cutoff_year
-        mask_val = X['real_year'] >= cutoff_year
-
-        X_train, X_val = X[mask_train], X[mask_val]
-        y_train, y_val = y[mask_train], y[mask_val]
-
-        return X_train, X_val, y_train, y_val
-    
-    ### Scaling functions ###
-    
-    def custom_scaling(self, X_train: pd.DataFrame, X_val: pd.DataFrame) -> tuple:
-        """
-        Applies different scalers to different column groups:
-        - RobustScaler -> 'pr' columns (precipitation)
-        - MinMaxScaler -> 'rsds' columns (solar radiation)
-        - StandardScaler -> 'tas', 'tasmin', 'tasmax' columns (temperature)
-        - Passthrough -> others (lat, lon, encoded features, etc.)
-        """
-        print("Applying custom scaling...")
-        
-        # 1. Identify columns by group
-
-        cols_pr = [c for c in X_train.columns if 'pr' in c]
-        cols_rsds = [c for c in X_train.columns if 'rsds' in c]
-        cols_tas = [c for c in X_train.columns if 'tas' in c]
-
-        col_lat = ['lat']
-        
-        # All other columns are kept as is
-        cols_passthrough = [c for c in X_train.columns if c not in cols_pr + cols_rsds + cols_tas + col_lat]
-
-        # 2. Initialize Scalers
-        scaler_pr = RobustScaler()
-        scaler_rsds = MinMaxScaler()
-        scaler_tas = StandardScaler()
-
-        # 3. Fit & Transform (returns Numpy arrays, so we rebuild DataFrames)
-        
-        # robust_scaling_pr
-        if cols_pr:
-            train_pr = pd.DataFrame(scaler_pr.fit_transform(X_train[cols_pr]), 
-                                    columns=cols_pr, index=X_train.index)
-            val_pr = pd.DataFrame(scaler_pr.transform(X_val[cols_pr]), 
-                                  columns=cols_pr, index=X_val.index)
-        else:
-            train_pr, val_pr = pd.DataFrame(), pd.DataFrame()  #le bloc Else pour éviter tout plantage si pas de donnée pr --> crée un df vide que le .concat va ignorer.
-
-        # minmax scaling rsds
-        if cols_rsds:
-            train_rsds = pd.DataFrame(scaler_rsds.fit_transform(X_train[cols_rsds]), 
-                                      columns=cols_rsds, index=X_train.index)
-            val_rsds = pd.DataFrame(scaler_rsds.transform(X_val[cols_rsds]), 
-                                    columns=cols_rsds, index=X_val.index)
-        else:
-            train_rsds, val_rsds = pd.DataFrame(), pd.DataFrame()
-
-        # std sclaing temperature data
-        if cols_tas:
-            train_tas = pd.DataFrame(scaler_tas.fit_transform(X_train[cols_tas]), 
-                                     columns=cols_tas, index=X_train.index)
-            val_tas = pd.DataFrame(scaler_tas.transform(X_val[cols_tas]), 
-                                   columns=cols_tas, index=X_val.index)
-        else:
-            train_tas, val_tas = pd.DataFrame(), pd.DataFrame()
-
-        if col_lat:
-            train_lat = pd.DataFrame(np.cos(X_train[col_lat]/90), columns=col_lat, index=X_train.index)
-            val_lat = pd.DataFrame(np.cos(X_val[col_lat]/90), columns=col_lat, index=X_train.index)
-        else:
-            train_lat, val_lat = pd.DataFrame(), pd.DataFrame()
-
-        # left it as is
-        train_pass = X_train[cols_passthrough]
-        val_pass = X_val[cols_passthrough]
-
-        # 4. Concatenate back
-        X_train_scaled = pd.concat([train_pass, train_pr, train_rsds, train_tas, train_lat], axis=1)
-        X_val_scaled = pd.concat([val_pass, val_pr, val_rsds, val_tas, val_lat], axis=1)
-        
-        # Ensure same column order as input df
-        X_train_scaled = X_train_scaled[X_train.columns]
-        X_val_scaled = X_val_scaled[X_val.columns]
-
-        return X_train_scaled, X_val_scaled
-
-    ### Saving and checking data ###
-
-    def check_processed_files(self, prefix="train") -> bool:
-        """check if files already exists and processed"""
-        files = ['X_train.csv', 'X_val.csv', 'y_train.csv', 'y_val.csv']
-        return all((self.processed_data_path / f"{prefix}_{f}").exists() for f in files)
-    
-    def save_data(self, X_train, X_val, y_train, y_val):
-        """Export in CSV on a local dir"""
-        print(f"Saving processed data in {self.processed_data_path}...")
-        X_train.to_csv(self.processed_data_path / "X_train.csv", index=False)
-        print (f"X_train saved! and is of shape: {X_train.shape}")
-        X_val.to_csv(self.processed_data_path / "X_val.csv", index=False)
-        print (f"X_val saved! and is of shape: {X_val.shape}")
-        y_train.to_csv(self.processed_data_path / "y_train.csv", index=False)
-        print (f"y_train saved! and is of shape: {y_train.shape}")
-        y_val.to_csv(self.processed_data_path / "y_val.csv", index=False)
-        print (f"y_val saved! and is of shape: {y_val.shape}")
-        print("Done")
-
-    ### Running it all ###
-
-    def run_pipeline(self, cutoff_year=2010, force_reload=False):
-        """
-        Running the entire preprocessing functions.
-        If iles already exists then preprocessing is skipped unless forced. (force_reload=True).
-        """
-
-        if self.check_processed_files() and not force_reload:
-            print("Preproc already done.")
-            return
-
-        # 1. Load
-        df_raw = self.load_raw_data()
-        
-        # 2. Compress & Split features/target
+    def process_one_dataset(self, crop, mode):
+        """Orchestre load -> compress -> feature eng pour UN fichier."""
+        df_raw = self.load_raw_data(crop, mode)
         X_raw, y = self.compress(df_raw)
+        del df_raw    # supprimer la variable inutilisé pour optimiser la mémoire
+        gc.collect()  #optimiser la RAM --> package python à installer
         
-        # 3. Feature Engineering
-        X_features = self.feature_engineering(X_raw)
-                
-        # 4. Split
-        X_train, X_val, y_train, y_val = self.split_data(X_features, y, cutoff_year=cutoff_year)
+        X_feat = self.feature_engineering(X_raw)
         
-        # 5. Scaling 
-        X_train, X_val = self.custom_scaling(X_train, X_val)
-                
-        # 6. Save
-        self.save_data(X_train, X_val, y_train, y_val)
+        # Ré-attacher y si c'est le train, pour garder l'alignement
+        if y is not None:
+            # Sécurité alignement index
+            y = y.loc[X_feat.index]
+        
+        return X_feat, y
 
+    ### Scaling ###
+
+    def fit_transform_scaling(self, df_fit: pd.DataFrame, df_transform: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apprend les scalers sur df_fit (ex: X_train) et applique sur df_transform (ex: X_val ou X_test).
+        Renvoie SEULEMENT df_transform scalé.
+        """
+        print("Scaling data...")
+        X_scaled = df_transform.copy()
+        
+        # Définition des groupes de colonnes
+        cols_pr = [c for c in df_fit.columns if 'pr' in c]
+        cols_rsds = [c for c in df_fit.columns if 'rsds' in c]
+        cols_tas = [c for c in df_fit.columns if 'tas' in c] # inclut tas, tasmin, tasmax
+        cols_geo = ['lat', 'lon']
+        cols_co2 = ['soil_co2_co2', 'soil_co2_nitrogen']
+        
+        # Scalers
+        scalers = {
+            'pr': (RobustScaler(), cols_pr),
+            'co2': (RobustScaler(), cols_co2),
+            'rsds': (MinMaxScaler(), cols_rsds),
+            'tas': (StandardScaler(), cols_tas)
+        }
+
+        for name, (scaler, cols) in scalers.items():
+            if cols:
+                # Fit sur le jeu d'entrainement/fit
+                scaler.fit(df_fit[cols])
+                # Transform sur le jeu cible
+                X_scaled[cols] = scaler.transform(df_transform[cols])
+        
+        # Traitement spécifique Geo (Cos transformation)
+        if all(c in df_fit.columns for c in cols_geo):
+             X_scaled[cols_geo] = np.cos(df_transform[cols_geo] / 90)
+
+        return X_scaled
+
+    ### Saving ###
+
+    def save_df(self, df, filename):
+        if df is not None:
+            path = self.processed_data_path / f"{filename}.csv"
+            print(f"Saving {filename} ({df.shape})...")
+            df.to_csv(path, index=True)
+
+    def _files_exist(self, filenames: list) -> bool:
+            """Renvoie True si tous les fichiers de la liste existent."""
+            return all((self.processed_data_path / f).exists() for f in filenames)
+    
+    ### Handling 2 cases: exploratory and full production cases ###
+
+    def run_exploration(self, crops=['wheat'], cutoff_year=2010, force_reload=False):
+        """
+        Function to handle exploratroy cases on maze or wheat. 
+        """
+        for crop in crops:
+            
+            expected_files = [
+                f"X_train_{crop}_explo.csv", f"X_val_{crop}_explo.csv",
+                f"y_train_{crop}_explo.csv", f"y_val_{crop}_explo.csv"
+            ]
+            
+            # Vérification : Si pas de force_reload et fichiers présents -> SKIP
+            if not force_reload and self._files_exist(expected_files):
+                print(f"Fichiers exploratoires pour '{crop}' déjà présents. Skip.")
+                continue
+            
+            print(f"\n=== Running Exploration for {crop} ===")
+            X, y = self.process_one_dataset(crop, 'train')  # c'est ici qu'on ajoute du feature engineering + compression 
+            
+            # Split Temporel - pour jeu de val
+            if 'real_year' not in X.columns:
+                 # Fallback si feature engineering a supprimé real_year, à ajuster
+                 raise ValueError("real_year missing")
+            
+            mask_train = X['real_year'] < cutoff_year
+            mask_val = X['real_year'] >= cutoff_year
+            
+            X_train_raw, X_val_raw = X[mask_train], X[mask_val]
+            y_train, y_val = y[mask_train], y[mask_val]
+            
+            # Scaling (On fit sur Train, on transforme Train ET Val)
+            X_train_scaled = self.fit_transform_scaling(X_train_raw, X_train_raw)
+            X_val_scaled = self.fit_transform_scaling(X_train_raw, X_val_raw)
+            
+            # Save
+            self.save_df(X_train_scaled, f"X_train_{crop}_explo")
+            self.save_df(X_val_scaled, f"X_val_{crop}_explo")
+            self.save_df(y_train, f"y_train_{crop}_explo")
+            self.save_df(y_val, f"y_val_{crop}_explo")
+            
+            # Clean RAM
+            del X, y, X_train_raw, X_val_raw
+            gc.collect()
+
+    def run_production(self, crops=['wheat', 'maize'], force_reload=False):
+        """
+        fuction to run full production preproc --> before kaggle submission
+        """
+        for crop in crops:
+
+            expected_files = [
+                f"X_train_{crop}_full.csv", f"y_train_{crop}_full.csv",
+                f"X_test_{crop}_full.csv"
+            ]
+
+            # Vérification
+            if not force_reload and self._files_exist(expected_files):
+                print(f"Fichiers de production pour '{crop}' déjà présents. Skip.")
+                continue
+
+            print(f"\n=== Running Production for {crop} ===")
+            
+            # 1. Process Train Full
+            X_train_full, y_train_full = self.process_one_dataset(crop, 'train')
+            
+            # 2. Process Test Full
+            X_test_full, _ = self.process_one_dataset(crop, 'test')
+            
+            # 3. Scaling: Fit sur Train Full, Transform sur Train Full ET Test Full
+            X_train_scaled = self.fit_transform_scaling(X_train_full, X_train_full)
+            X_test_scaled = self.fit_transform_scaling(X_train_full, X_test_full)
+            
+            # 4. Save
+            self.save_df(X_train_scaled, f"X_train_{crop}_full")
+            self.save_df(y_train_full, f"y_train_{crop}_full")
+            self.save_df(X_test_scaled, f"X_test_{crop}_full")
+            
+            # Clean RAM
+            del X_train_full, X_test_full, y_train_full
+            gc.collect()
 
 if __name__ == "__main__":
     
-    preproc = Preprocessing(raw_data_path='raw_data', processed_data_path='processed_data', crop='wheat')
+    preproc = Preprocessing_ml(raw_data_path='raw_data', processed_data_path='processed_data')
     
-    preproc.run_pipeline(cutoff_year=2010, force_reload=True)
+    # CAS 1 : Tout générer pour la prod (6 fichiers)
+    # preproc.run_production(crops=['wheat', 'maize'])
+    
+    # CAS 2 : Juste Wheat pour la prod (3 fichiers)
+    # preproc.run_production(crops=['wheat'])
+    
+    # CAS 3 : Exploration Wheat (Train/Val split)
+    preproc.run_exploration(crops=['wheat'], cutoff_year=2010)
+    
+    # CAS 4 : Exploration All crops
+    # preproc.run_exploration(crops=['wheat', 'maize'], cutoff_year=2010)

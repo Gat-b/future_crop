@@ -1,0 +1,11 @@
+README.md
+setup.py
+future_crop/__init__.py
+future_crop/params.py
+future_crop/utils.py
+future_crop.egg-info/PKG-INFO
+future_crop.egg-info/SOURCES.txt
+future_crop.egg-info/dependency_links.txt
+future_crop.egg-info/not-zip-safe
+future_crop.egg-info/requires.txt
+future_crop.egg-info/top_level.txt

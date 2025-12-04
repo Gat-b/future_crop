@@ -5,6 +5,7 @@ pylint
 ipdb
 jupyterlab
 numpy
+# numpy == 1.23.5 #Pour model conv_gcn
 pandas
 matplotlib
 seaborn

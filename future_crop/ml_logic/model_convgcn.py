@@ -76,31 +76,32 @@ def conv1d_gcn_model(X_lat_lon, X_time):
     Transformation des données temporelles de chaque point en embedding vectoriel
     '''
 
-    assert X_time.shape[1:] == (240,8)
-
     N = X_time.shape[0]
 
     # Création de la matrice adjacente
     edges = heversine(X_lat_lon)
     A = build_adjacency(edges, N)
 
+    #Input
+    A_in = Input((N, N), sparse=True)
+    X_in = Input(shape=(N, 240, 5))  # (N, 240, 5)
+
     # CONV1D model : Embedding de X_time
-    X_in = Input(X_time.shape[1:])  # (240, 8)
-    x = Conv1D(64, kernel_size=5, activation='relu', padding='same')(X_in)
-    X_time_emb = Conv1D(64, kernel_size=5, activation='relu', padding='same')(x)
 
-
-    # x = Flatten()(x)
-    # X_time_emb = Dense(64, activation='relu')(x)
+    td = TimeDistributed(Conv1D(64, 5, activation='relu', padding='same'))(X_in)
+    td = TimeDistributed(Conv1D(64, 5, activation='relu', padding='same'))(td)
+    td = TimeDistributed(Flatten())(td)
+    X_nodes = TimeDistributed(Dense(64, activation='relu'))(td) # Embedding de tous les noeuds > (N, 64)
+    print(X_nodes.shape)
 
     #GCN model
     # Analogie ligne par ligne :
     # 1. chaque village regarde ses voisins et ajuste sa “connaissance climatique” en combinant la sienne avec celle des villages proches
     # 2. c’est comme un deuxième “tour de discussion” avec les voisins, maintenant chacun sait mieux ce qui se passe autour.
     # 3. Prédiction des rendements
-    H = GCNConv(64, activation='relu')([X_time_emb, A])
-    H = GCNConv(32, activation='relu')([H, A])
+    H = GCNConv(64)([X_nodes, A_in])
+    H = GCNConv(32)([H, A_in])
     out = Dense(1, activation='relu')(H)
 
-    model = Model(inputs=X_in, outputs=out)
+    model = Model(inputs=[X_in, A_in], outputs=out)
     return model

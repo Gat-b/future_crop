@@ -275,6 +275,12 @@ class Preprocessing_ml:
         
         # Traitement spécifique Geo (Cos transformation)
         if all(c in df_fit.columns for c in cols_geo):
+            geo_orig = df_transform[cols_geo].add_suffix('_orig')
+            
+            # 2. Coller ce bloc au DataFrame principal en une seule fois (évite la fragmentation)
+            X_scaled = pd.concat([geo_orig, X_scaled], axis=1)
+            
+            # 3. Appliquer la transformation cosinus sur les colonnes standard
             X_scaled[cols_geo] = np.cos(df_transform[cols_geo] / 90)
 
         return X_scaled

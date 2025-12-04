@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 class DataVisualization:
     """
@@ -76,3 +77,19 @@ class DataVisualization:
         plt.legend()
         plt.tight_layout()
         plt.show()
+
+    def geo_plot(self, df: pd.DataFrame):
+        fig = px.scatter_geo(
+            data_frame= df,
+            lat="lat_orig",
+            lon="lon_orig",
+            color="yield_diff",
+            range_color=[-5, 5], # Echelle de 0 à 100
+            size_max=0.001,
+            hover_name="yield_diff",
+            animation_frame="real_year",
+            projection="natural earth",
+            color_continuous_scale="Turbo_r")
+
+        fig.update_layout(title="diff vs. valuation yield")
+        fig.show()

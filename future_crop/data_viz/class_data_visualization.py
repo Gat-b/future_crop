@@ -83,7 +83,7 @@ class DataVisualization:
         plt.tight_layout()
         plt.show()
 
-    def create_results_df(self, X_val: pd.DataFrame, y_val: pd.DataFrame, y_pred: pd.Series) -> pd.DataFrame:
+    def create_results_df(self, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None) -> pd.DataFrame:
         yield_df = pd.merge(X_val[["ID", "real_year", "lon_orig","lat_orig"]], y_val, how = 'inner', on = 'ID')
         if y_pred is not None:
             yield_df = pd.concat([yield_df, pd.Series(y_pred)], axis=1)
@@ -141,21 +141,22 @@ class DataVisualization:
         #2. Plotting
         sns.histplot(yield_df["yield_diff"], bins=100)
 
-    def plotting_forecast(self, train_df: pd.DataFrame = None, yield_df: pd.DataFrame = None, n_loc: int = 5, X_train: pd.DataFrame = None, y_train: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,
-                 y_pred: pd.Series = None):
+    def plotting_forecast(self, train_df: pd.DataFrame = None, yield_df: pd.DataFrame = None, n_loc: int = 5, 
+                          X_train: pd.DataFrame = None, y_train: pd.DataFrame = None, 
+                          X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None):
 
         # 1. Automatic Execution: Create DataFrame if not provided
         if train_df is None:
             if all(v is not None for v in [X_train, y_train]):
                 print("Computing results DataFrame automatically...")
-                train_df = self.create_results_df(X_train, y_train)
+                train_df = self.create_results_df(X_val = X_train, y_val = y_train)
             else:
                 raise ValueError("You must provide either 'train_df' OR 'X_train', 'y_train'.")
 
         if yield_df is None:
             if all(v is not None for v in [X_val, y_val, y_pred]):
                 print("Computing results DataFrame automatically...")
-                yield_df = self.create_results_df(X_val, y_val, y_pred)
+                yield_df = self.create_results_df(X_val = X_val, y_val = y_val, y_pred = y_pred)
             else:
                 raise ValueError("You must provide either 'yield_df' OR 'X_val', 'y_val', and 'y_pred'.")
 

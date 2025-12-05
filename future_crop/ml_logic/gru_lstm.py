@@ -88,7 +88,7 @@ def build_lstm_model():
     '''
     model = Sequential()
 
-    model.add(LSTM(64, input_shape=((240,5))))  # only temp
+    model.add(LSTM(64, input_shape=((240,7))))  # only temp
     model.add(Dense(1))                      # prédiction de rendement
 
     model.compile(optimizer=RMSprop(), loss = 'mse', metrics=RootMeanSquaredError(name="rmse"))
@@ -100,7 +100,7 @@ def build_gru_model():
     '''
     model = Sequential()
 
-    model.add(GRU(64, input_shape=((240,5))))
+    model.add(GRU(64, input_shape=((240,7))))
     model.add(Dense(1, activation='linear'))
     model.compile(optimizer=Adam(learning_rate=1e-4), loss = 'mse', metrics=RootMeanSquaredError(name="rmse"))
     return model

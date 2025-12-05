@@ -4,6 +4,10 @@ notebook/
 test/
 processed_data/
 geo_coding/
+raw_data_wheat/
+raw_data_maize/
+raw_data_wheat.zip
+raw_data_maize.zip
 
 # Autres
 *.ipynb

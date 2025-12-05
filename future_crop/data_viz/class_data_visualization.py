@@ -14,7 +14,6 @@ class DataVisualization:
         self.geo_coding = Path(geo_coding)
         self.geo_coding.mkdir(parents=True, exist_ok=True)
 
-
     def plot_forecast(self, y_pred: pd.Series, y_train: pd.Series,
                       y_test: pd.Series, upper: np.ndarray = None,
                       lower: np.ndarray = None):
@@ -200,7 +199,7 @@ class DataVisualization:
         sns.barplot(data=feat_imp, x='importance', y='feature', palette="viridis", hue='feature', legend=False)
         
         # 3. Esthétique
-        plt.title(f"Top {top_n} Feature Importance (XGBoost)", fontsize=15)
+        plt.title(f"Top {top_n} Feature Importance", fontsize=15)
         plt.xlabel("Importance Score", fontsize=12)
         plt.ylabel("Features", fontsize=12)
         plt.grid(axis='x', linestyle='--', alpha=0.7)

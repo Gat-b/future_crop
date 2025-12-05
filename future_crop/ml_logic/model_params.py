@@ -66,17 +66,16 @@ params_dict_rando={
     'XGBRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                     'max_depth': [3, 5, 10, 18],
                     'n_estimators': [10, 50, 100]},
-    'LightGBM': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                    'max_depth': [3, 5, 10, 18],
-                    'n_estimators': [10, 50, 100]},
+    'LightGBM': {'learning_rate': [0.05, 0.1, 0.5],
+                    'n_estimators': [10000, 50000, 100000]},
     'Catboost': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                     'max_depth': [3, 5, 10, 20],
                     'n_estimators': [10, 50, 100]}
     }
 
 # custom dict
-adri_model_dict = {key: model_dict[key] for key in ['RandomForestRegressor']}
-adri_params_dict = {key: params_dict_rando[key] for key in ['RandomForestRegressor']}
+adri_model_dict = {key: model_dict[key] for key in ['LightGBM']}
+adri_params_dict = {key: params_dict_rando[key] for key in ['LightGBM']}
 
 simon_model_dict = {}
 simon_params_dict = {}
@@ -112,3 +111,13 @@ features_name_ml =['mean_pr', 'median_pr', 'sum_pr', 'min_pr', 'max_pr',
                    'mean_tasmax', 'median_tasmax', 'sum_tasmax', 'min_tasmax', 'max_tasmax',
                    'soil_co2_co2', 'soil_co2_nitrogen',
                    'lon', 'lat']
+
+features_name_ml_reviewed = ['mean_pr', 'sum_pr', 'max_pr',
+                   'mean_tas', 'min_tas', 'max_tas',
+                   'mean_rsds', 'sum_rsds', 'min_rsds', 'max_rsds',
+                   'mean_tasmin', 'sum_tasmin', 'min_tasmin', 'max_tasmin',
+                   'mean_tasmax', 'sum_tasmax', 'min_tasmax', 'max_tasmax',
+                   'soil_co2_co2', 'soil_co2_nitrogen',
+                   'lon', 'lat', 'soil_co2_co2.1', 'soil_co2_nitrogen.1',
+                   'region_Tempered', 'region_Tropical', 'geohash_id',
+                   'mean_yield_loc']

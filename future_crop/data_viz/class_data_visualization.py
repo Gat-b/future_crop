@@ -219,7 +219,7 @@ class DataVisualization:
             X=X,
             y=y,
             cv=5,
-            train_sizes=np.linspace(0.1, 1.0, 5),
+            train_sizes=np.linspace(0.1, 1.0, 100),
             scoring="r2"
         )
 

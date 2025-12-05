@@ -1,7 +1,7 @@
 import numpy as np
 
 from keras import Model
-from keras.layers import Input, Lambda, TimeDistributed, ConvLSTM2D, Conv1D, Flatten, Dense, MaxPooling3D
+from keras.layers import Input, Lambda, TimeDistributed, Masking, ConvLSTM2D, Conv1D, Flatten, Dense, MaxPooling3D
 from keras.callbacks import EarlyStopping
 
 
@@ -28,8 +28,7 @@ def heversine(X_lat_lon):
 
     # Création pour chaque point des indices des 5 points les plus proches et
     # de leurs distances en km
-    coords = X_lat_lon[['lat', 'lon']].to_numpy()
-    coords_rad = np.radians(coords) ## Transformation en randians
+    coords_rad = np.radians(X_lat_lon) ## Transformation en randians
 
     knn = NearestNeighbors(n_neighbors=5, metric='haversine')
     knn.fit(coords_rad)
@@ -37,7 +36,7 @@ def heversine(X_lat_lon):
 
     # Création des arrêtes
     edges = []
-    for i in range(len(coords)):
+    for i in range(len(X_lat_lon)):
         for j in indices[i]:
             edges.append((i, j))
 
@@ -51,6 +50,7 @@ def build_adjacency(edges, N):
 
     return : matrice A (adjacency) pour le model GNN
     """
+
     # Construire la matrice scipy sparse d'abord
     adjacency = sparse.lil_matrix((N, N))
     for i, j in edges :
@@ -71,37 +71,47 @@ def build_adjacency(edges, N):
     return adjacency_tf
 
 
-def conv1d_gcn_model(X_lat_lon, X_time):
+def padding(X_time, y):
     '''
-    Transformation des données temporelles de chaque point en embedding vectoriel
+    Padding des années avec des NaN pour avoir un autant de point de données
+    par an et donc nue shape constante.
     '''
 
-    N = X_time.shape[0]
+    N_max = max([X.shape[0] for X in X_time]) # Le nombre max de points (stations) sur l'ensemble des années
 
-    # Création de la matrice adjacente
-    edges = heversine(X_lat_lon)
-    A = build_adjacency(edges, N)
 
-    #Input
-    A_in = Input((N, N), sparse=True)
-    X_in = Input(shape=(N, 240, 5))  # (N, 240, 5)
+    # Padding pour X
+    X_reshaped_time_padded = []
+    y_reshaped_padded = []
 
-    # CONV1D model : Embedding de X_time
+    for i, year_data in enumerate(X_time):
+            N_current = year_data.shape[0]  # Le nombre actuel de stations pour cette année
 
-    td = TimeDistributed(Conv1D(64, 5, activation='relu', padding='same'))(X_in)
-    td = TimeDistributed(Conv1D(64, 5, activation='relu', padding='same'))(td)
-    td = TimeDistributed(Flatten())(td)
-    X_nodes = TimeDistributed(Dense(64, activation='relu'))(td) # Embedding de tous les noeuds > (N, 64)
-    print(X_nodes.shape)
+            # Padding pour X_time
+            if N_current < N_max:
+                # Compléter avec des NaNs
+                padding = np.full((N_max - N_current, 240, 5), np.nan)  # Compléter avec NaN
+                # Ajouter le padding à l'année
+                padded_year_data = np.vstack([year_data, padding])  # Ajouter les stations manquantes
+            else:
+                padded_year_data = year_data  # Si N_current == N_max, pas besoin de padding
 
-    #GCN model
-    # Analogie ligne par ligne :
-    # 1. chaque village regarde ses voisins et ajuste sa “connaissance climatique” en combinant la sienne avec celle des villages proches
-    # 2. c’est comme un deuxième “tour de discussion” avec les voisins, maintenant chacun sait mieux ce qui se passe autour.
-    # 3. Prédiction des rendements
-    H = GCNConv(64)([X_nodes, A_in])
-    H = GCNConv(32)([H, A_in])
-    out = Dense(1, activation='relu')(H)
+            X_reshaped_time_padded.append(padded_year_data)
 
-    model = Model(inputs=[X_in, A_in], outputs=out)
-    return model
+            # Padding pour y (si y est fourni)
+            if y is not None:
+                y_current = y[i]  # Récupérer les valeurs cibles pour l'année en cours
+                if y_current.shape[0] < N_max:
+                    # Compléter y avec NaNs (ou une autre valeur comme 0)
+                    y_padding = np.full((N_max - y_current.shape[0], y_current.shape[1]), np.nan)
+                    padded_y = np.vstack([y_current, y_padding])  # Ajouter le padding
+                else:
+                    padded_y = y_current  # Si y_current == N_max, pas de padding nécessaire
+
+                y_reshaped_padded.append(padded_y)
+
+    # Convertir X_reshaped_time_padded en numpy array
+    X_reshaped_time_padded = np.array(X_reshaped_time_padded)
+    y_reshaped_padded = np.array(y_reshaped_padded)
+
+    return X_reshaped_time_padded, y_reshaped_padded

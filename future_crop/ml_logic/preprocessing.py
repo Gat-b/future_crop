@@ -243,7 +243,7 @@ class Preprocessing_ml:
         X_raw_features = X.iloc[:, 6:]
 
         # Returning featured df 
-        X = pd.concat([year, geo_region, constant, texture, 
+        X = pd.concat([year, geo_region, constant, texture, co2, nitro,
                        mean_pr,median_pr, sum_pr,min_pr,max_pr,
                        mean_tas, median_tas, min_tas, max_tas,
                        mean_rsds, median_rsds, sum_rsds,min_rsds,max_rsds, 

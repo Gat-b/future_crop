@@ -2,8 +2,8 @@ pytest
 pylint
 ipdb
 jupyterlab
-numpy
-pandas
+numpy==1.23.5
+pandas==1.5.3
 matplotlib
 seaborn
 scikit-learn
@@ -16,7 +16,6 @@ google-cloud-bigquery
 google-cloud-storage==2.14.0
 google-api-core==2.8.2
 googleapis-common-protos==1.56.4
-statsmodels
 
 [:sys_platform != "darwin"]
 tensorflow==2.10.0

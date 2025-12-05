@@ -1,6 +1,31 @@
-Metadata-Version: 2.1
-Name: future-crop
+Metadata-Version: 2.4
+Name: future_crop
 Version: 0.0.1
 Summary: Future Crop - Challenge Kaggle
 Author: Crop Master
 License: MIT
+Requires-Dist: pytest
+Requires-Dist: pylint
+Requires-Dist: ipdb
+Requires-Dist: jupyterlab
+Requires-Dist: numpy==1.23.5
+Requires-Dist: pandas==1.5.3
+Requires-Dist: matplotlib
+Requires-Dist: seaborn
+Requires-Dist: scikit-learn
+Requires-Dist: geopandas
+Requires-Dist: xgboost
+Requires-Dist: lightgbm
+Requires-Dist: catboost
+Requires-Dist: pyarrow
+Requires-Dist: google-cloud-bigquery
+Requires-Dist: google-cloud-storage==2.14.0
+Requires-Dist: google-api-core==2.8.2
+Requires-Dist: googleapis-common-protos==1.56.4
+Requires-Dist: tensorflow-macos==2.10.0; sys_platform == "darwin" and "ARM" in platform_version
+Requires-Dist: tensorflow==2.10.0; sys_platform == "darwin" and "ARM" not in platform_version
+Requires-Dist: tensorflow==2.10.0; sys_platform != "darwin"
+Dynamic: author
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: summary

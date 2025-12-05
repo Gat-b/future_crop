@@ -293,7 +293,8 @@ class Preprocessing_ml:
             X_scaled = pd.concat([geo_orig, X_scaled], axis=1)
             
             # 3. Appliquer la transformation cosinus sur les colonnes standard
-            X_scaled[cols_geo] = np.cos(df_transform[cols_geo] / 90)
+            X_scaled['lat'] = np.sin(df_transform['lat'] * np.pi / 180)
+            X_scaled['lon'] = np.cos(df_transform['lon'] * np.pi / 180)
 
         return X_scaled
 

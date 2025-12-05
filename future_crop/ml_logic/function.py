@@ -7,7 +7,7 @@ from catboost import CatBoostRegressor
 
 
 
-def model_selection_grid(X, y, model_dict, params_dict):
+def model_selection(X, y, model_dict, params_dict):
     """
     Perform grid-search model selection with time-series cross-validation.
 
@@ -96,16 +96,17 @@ def model_selection_randomize(X, y, model_dict, params_dict):
 
     for name, model in model_dict.items():
 
-        tscv = TimeSeriesSplit(n_splits=5)
+        tscv = TimeSeriesSplit(n_splits=3)
         params = params_dict[name]
 
         random = RandomizedSearchCV(model,
                                     param_distributions=params,
-                                    n_iter=50,
+                                    n_iter=60,
                                     scoring='neg_root_mean_squared_error',
                                     n_jobs=-1,
                                     cv=tscv,
-                                    verbose=2)
+                                    verbose=2,
+                                    random_state=42)
 
         result = random.fit(X, y)
         score_dict[name] = -(result.best_score_)
@@ -138,7 +139,6 @@ def model_fit(X, y, model):
 
     return model
 
-
 def model_predict(X, model):
     """
     Predict target values using a fitted model.
@@ -158,7 +158,6 @@ def model_predict(X, model):
     y_pred = model.predict(X)
 
     return y_pred
-
 
 def model_score(X, y, model):
     """

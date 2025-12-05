@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, OneHotEncoder
 from pathlib import Path
 import gc
+import pygeohash as gh
 
 
 # Racine du package "future_crop"
@@ -129,9 +130,9 @@ class Preprocessing_ml:
         #1 Hydrométrie (total annuel, moyenne, min et max, 30j glissant?) -> 9 features
         pr_columns = [col for col in X.columns if col.startswith('pr_')]
 
-        pr_day_cols = sorted(pr_columns, key=lambda x: int(x.split('_')[-1]))
-        rolling_30_days_pr = X[pr_day_cols].T.rolling(window=30, min_periods=30).mean().T.dropna(axis=1)
-        rolling_30_days_pr = rolling_30_days_pr.add_prefix('pr_roll30')
+        # pr_day_cols = sorted(pr_columns, key=lambda x: int(x.split('_')[-1]))
+        # rolling_30_days_pr = X[pr_day_cols].T.rolling(window=30, min_periods=30).mean().T.dropna(axis=1)
+        # rolling_30_days_pr = rolling_30_days_pr.add_prefix('pr_roll30')
         
         mean_pr = X[pr_columns].mean(axis=1).rename('mean_pr')
         median_pr = X[pr_columns].median(axis=1).rename('median_pr')
@@ -223,17 +224,53 @@ class Preprocessing_ml:
                                    columns=ohe.get_feature_names_out(['geo_region']),
                                    index=X.index)
 
-        #8 tout le reste
+        #8 change in C02 and Nitrogen
+        co2 = X[['lon', 'lat', 'soil_co2_co2']].groupby(['lon', 'lat'])['soil_co2_co2'].diff()
+        co2.fillna(0, inplace=True)
+        nitro = X[['lon', 'lat', 'soil_co2_nitrogen']].groupby(['lon', 'lat'])['soil_co2_nitrogen'].diff()
+        nitro.fillna(0, inplace=True)
+
+        #9 Geohashing to create cluster zones
+        geohash_str = X.apply(lambda x: gh.encode(x['lat'], x['lon'], precision=4), axis=1)
+        
+        # Convert string hash to a deterministic integer (hashing)
+        # This avoids needing to fit a LabelEncoder that you would have to save/load later
+        geohash_id = geohash_str.apply(lambda x: hash(x) % 10**8).rename('geohash_id')
+        del geohash_str
+        gc.collect()
+
+        #10 tout le reste
         X_raw_features = X.iloc[:, 6:]
 
         # Returning featured df 
-        X = pd.concat([year, geo_region, constant, texture, mean_pr,median_pr, sum_pr,min_pr,max_pr, rolling_30_days_pr,
-                    mean_tas, median_tas, min_tas, max_tas,
-                    mean_rsds, median_rsds, sum_rsds,min_rsds,max_rsds, 
-                    mean_tasmin, median_tasmin, sum_tasmin,min_tasmin,max_tasmin,
-                    mean_tasmax, median_tasmax, sum_tasmax,min_tasmax,max_tasmax,
-                    region_encoded, geo_encoded, X_raw_features], axis=1)
+        X = pd.concat([year, geo_region, constant, texture, 
+                       mean_pr,median_pr, sum_pr,min_pr,max_pr,
+                       mean_tas, median_tas, min_tas, max_tas,
+                       mean_rsds, median_rsds, sum_rsds,min_rsds,max_rsds, 
+                       mean_tasmin, median_tasmin, sum_tasmin,min_tasmin,max_tasmin,
+                       mean_tasmax, median_tasmax, sum_tasmax,min_tasmax,max_tasmax,
+                       region_encoded, geo_encoded, geohash_id,
+                       X_raw_features], axis=1)
         return X
+    
+    ### Feature engineering based on yield ###
+
+    def compute_location_yield_map(self, X_train: pd.DataFrame, y_train: pd.DataFrame)->pd.DataFrame:
+        """
+        Calcule le rendement moyen par localisation (lon, lat) sur le Train set uniquement.
+        Retourne un DataFrame de mapping.
+        """
+        # On concatène temporairement pour le groupby
+        temp_df = pd.concat([X_train[['lon', 'lat']], y_train], axis=1)
+        
+        # Calcul de la moyenne par coordonnées
+        # Note: utilise 'lon'/'lat' car 'soil_co2_lon' est supprimé/renommé dans compress()
+        yield_map = temp_df.groupby(['lon', 'lat'])['yield'].mean().reset_index()
+        yield_map.rename(columns={'yield': 'mean_yield_loc'}, inplace=True)
+        del temp_df
+        gc.collect()
+        
+        return yield_map
     
     ### premier aggrégation du jeu de données ###
 
@@ -269,13 +306,15 @@ class Preprocessing_ml:
         cols_tas = [c for c in df_fit.columns if 'tas' in c] # inclut tas, tasmin, tasmax
         cols_geo = ['lat', 'lon']
         cols_co2 = ['soil_co2_co2', 'soil_co2_nitrogen']
-        
+        cols_yield_map = ['mean_yield_loc'] if 'mean_yield_loc' in df_fit.columns else []
+
         # Scalers
         scalers = {
             'pr': (RobustScaler(), cols_pr),
             'co2': (RobustScaler(), cols_co2),
             'rsds': (MinMaxScaler(), cols_rsds),
-            'tas': (StandardScaler(), cols_tas)
+            'tas': (StandardScaler(), cols_tas),
+            'yield_history': (StandardScaler(), cols_yield_map)
         }
 
         for name, (scaler, cols) in scalers.items():
@@ -342,6 +381,17 @@ class Preprocessing_ml:
             X_train_raw, X_val_raw = X[mask_train], X[mask_val]
             y_train, y_val = y[mask_train], y[mask_val]
             
+            ### Feature average yield ###
+            yield_map = self.compute_location_yield_map(X_train_raw, y_train)
+            X_train_raw = X_train_raw.merge(yield_map, on=['lon', 'lat'], how='left')
+            X_val_raw = X_val_raw.merge(yield_map, on=['lon', 'lat'], how='left')
+            
+            global_mean = y_train['yield'].mean()
+            
+            X_train_raw['mean_yield_loc'].fillna(global_mean, inplace=True)
+            X_val_raw['mean_yield_loc'].fillna(global_mean, inplace=True)
+            ### End feature ###
+
             # Scaling (On fit sur Train, on transforme Train ET Val)
             X_train_scaled = self.fit_transform_scaling(X_train_raw, X_train_raw)
             X_val_scaled = self.fit_transform_scaling(X_train_raw, X_val_raw)
@@ -353,7 +403,7 @@ class Preprocessing_ml:
             self.save_df(y_val, f"y_val_{crop}_explo")
             
             # Clean RAM
-            del X, y, X_train_raw, X_val_raw
+            del X, y, X_train_raw, X_val_raw, yield_map, y_train, y_val, X_train_scaled, X_val_scaled
             gc.collect()
 
     def run_production(self, crops=['wheat', 'maize'], force_reload=False):
@@ -380,6 +430,17 @@ class Preprocessing_ml:
             # 2. Process Test Full
             X_test_full, _ = self.process_one_dataset(crop, 'test')
             
+            ### Feature average yield ###
+            yield_map = self.compute_location_yield_map(X_train_full, y_train_full)
+            X_train_full = X_train_full.merge(yield_map, on=['lon', 'lat'], how='left')
+            X_test_full = X_test_full.merge(yield_map, on=['lon', 'lat'], how='left')
+
+            global_mean = y_train_full['yield'].mean()
+            
+            X_train_full['mean_yield_loc'].fillna(global_mean, inplace=True)
+            X_test_full['mean_yield_loc'].fillna(global_mean, inplace=True)
+            ### End feature ###
+
             # 3. Scaling: Fit sur Train Full, Transform sur Train Full ET Test Full
             X_train_scaled = self.fit_transform_scaling(X_train_full, X_train_full)
             X_test_scaled = self.fit_transform_scaling(X_train_full, X_test_full)
@@ -390,7 +451,7 @@ class Preprocessing_ml:
             self.save_df(X_test_scaled, f"X_test_{crop}_full")
             
             # Clean RAM
-            del X_train_full, X_test_full, y_train_full
+            del X_train_full, X_test_full, y_train_full, X_train_scaled, X_test_scaled
             gc.collect()
 
 if __name__ == "__main__":

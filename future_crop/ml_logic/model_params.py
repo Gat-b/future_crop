@@ -89,26 +89,28 @@ greg_model_dict = {'XGBRegressor': XGBRegressor(
         device='cuda',           # Explicitly use NVIDIA CUDA
         n_jobs=-1
     ),
-    'LightGBM': LGBMRegressor(
-        device='gpu',            # Enable GPU training
-        n_jobs=-1
-    ),
     'Catboost': CatBoostRegressor(
         task_type='GPU',         # Crucial for CatBoost
         devices='1',             # Use the first GPU
         verbose=0
     )
 }
+
+# 'LightGBM': LGBMRegressor(
+#         device='gpu',            # Enable GPU training
+#         n_jobs=-1
+#     ),
 greg_params_dict = {key: params_dict_grid[key] for key in ['XGBRegressor', 'LightGBM', 'Catboost']}
 
 mat_model_dict = {}
 mat_params_dict = {}
 
 # features ml
-features_name_ml =['mean_pr', 'median_pr', 'sum_pr', 'min_pr', 'max_pr',
-                   'mean_tas', 'median_tas', 'min_tas', 'max_tas',
-                   'mean_rsds', 'median_rsds', 'sum_rsds', 'min_rsds', 'max_rsds',
-                   'mean_tasmin', 'median_tasmin', 'sum_tasmin', 'min_tasmin', 'max_tasmin',
-                   'mean_tasmax', 'median_tasmax', 'sum_tasmax', 'min_tasmax', 'max_tasmax',
+features_name_ml =['mean_pr', 'sum_pr', 'min_pr', 'max_pr',
+                   'mean_tas', 'min_tas', 'max_tas',
+                   'mean_rsds', 'sum_rsds', 'min_rsds', 'max_rsds',
+                   'mean_tasmin', 'sum_tasmin', 'min_tasmin', 'max_tasmin',
+                   'mean_tasmax', 'sum_tasmax', 'min_tasmax', 'max_tasmax',
                    'soil_co2_co2', 'soil_co2_nitrogen',
-                   'lon', 'lat']
+                   'lon', 'lat', 'geo_id',
+                   'mean_yield_loc']

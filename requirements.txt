@@ -15,6 +15,7 @@ lightgbm
 catboost
 # pyplot should be in matplotlib
 pyarrow
+pygeohash
 
 ################################################################
 # Google cloud

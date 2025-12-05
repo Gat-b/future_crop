@@ -6,6 +6,8 @@ from pathlib import Path
 import gc
 
 
+# Racine du package "future_crop"
+
 class Preprocessing_ml:
     """
     A class for preprocessing data for a machine learning model.
@@ -21,10 +23,21 @@ class Preprocessing_ml:
         file (str): The file type (e.g., 'train').
     """
 
-    def __init__(self, raw_data_path='../raw_data', processed_data_path='../processed_data'):
-        
-        self.raw_data_path = Path(raw_data_path)
-        self.processed_data_path = Path(processed_data_path)       
+    def __init__(self):
+        """
+        Initialise des chemins robustes vers raw_data et processed_data,
+        indépendants du dossier courant.
+        """
+
+        # __file__ = .../future_crop/future_crop/ml_logic/preprocessing.py
+        # On remonte de 3 niveaux pour atteindre la racine du repo future_crop/
+        project_root = Path(__file__).resolve().parents[2]
+
+        # Répertoires des données
+        self.raw_data_path = project_root / "raw_data"
+        self.processed_data_path = project_root / "processed_data"
+
+        # Crée processed_data si nécessaire
         self.processed_data_path.mkdir(parents=True, exist_ok=True)
     
     ### Data loader - only local for now ###
@@ -376,7 +389,7 @@ class Preprocessing_ml:
 
 if __name__ == "__main__":
     
-    preproc = Preprocessing_ml(raw_data_path='raw_data', processed_data_path='processed_data')
+    preproc = Preprocessing_ml()
     
     # CAS 1 : Tout générer pour la prod (6 fichiers)
     # preproc.run_production(crops=['wheat', 'maize'])

@@ -65,8 +65,17 @@ class Preprocessing_ml:
                 raise FileNotFoundError(f"Fichier manquant : {file['path']}")
             dfs.append(pd.read_parquet(file['path']).add_prefix(file['file_name']))
         
-        print("data_loaded !")    
-        return pd.concat(dfs, axis=1)
+        print("Concatenating columns...")
+        # L'alignement se fait sur l'index (ID) automatiquement ici
+        df_full = pd.concat(dfs, axis=1)
+        
+        # --- FIX MAJEUR ICI ---
+        # On nomme l'index "ID" s'il n'a pas de nom, puis on le sort en colonne
+        df_full.index.name = 'ID' 
+        df_full.reset_index(inplace=True)
+        
+        print(f"Data loaded with shape {df_full.shape} and ID column extracted.")    
+        return df_full
      
     ### Compression function to save RAM ###
 
@@ -110,7 +119,7 @@ class Preprocessing_ml:
         out_size = df.memory_usage(index=True).sum()
         ratio = (1 - round(out_size / in_size, 2)) * 100
 
-        col_to_move = ["crop","lon","lat","texture_class","real_year", "season_year"]
+        col_to_move = ["ID","crop","lon","lat","texture_class","real_year", "season_year"]
         new_order = col_to_move + [col for col in df.columns if col not in col_to_move]
         df = df.loc[:,new_order]
 
@@ -119,7 +128,10 @@ class Preprocessing_ml:
 
         if "yield" in df.columns:
             X = df.drop(columns="yield")
-            y = df[["yield"]]
+            if "ID" in df.columns:
+                y = df[["ID", "yield"]]
+            else:
+                y = df[["yield"]] # Fallback au cas où
             return X, y
         return df, None
     
@@ -193,17 +205,14 @@ class Preprocessing_ml:
         
         region_encoded.index = X.index
 
-        #5 Année 
-        year = X['real_year']
-
-        #6 texture sol
+        #5 texture sol
         
         texture_class = X[['texture_class']]
         texture = pd.DataFrame(ohe.fit_transform(texture_class), 
                                columns=ohe.get_feature_names_out(['texture_class']))
         texture.index = X.index
 
-        #7 Features non modifiées
+        #6 Features non modifiées
         constant = X[['lon', 'lat', 'season_year']]
 
         #8 encode la région du monde
@@ -224,14 +233,14 @@ class Preprocessing_ml:
                                    columns=ohe.get_feature_names_out(['geo_region']),
                                    index=X.index)
 
-        #8 change in C02 and Nitrogen
-        co2 = X[['lon', 'lat', 'soil_co2_co2']].groupby(['lon', 'lat'])['soil_co2_co2'].diff()
+        #7 change in C02 and Nitrogen
+        co2 = X[['lon', 'lat', 'soil_co2_co2']].groupby(['lon', 'lat'])['soil_co2_co2'].diff().rename('soil_co2_co2_change')
         co2.fillna(0, inplace=True)
-        nitro = X[['lon', 'lat', 'soil_co2_nitrogen']].groupby(['lon', 'lat'])['soil_co2_nitrogen'].diff()
+        nitro = X[['lon', 'lat', 'soil_co2_nitrogen']].groupby(['lon', 'lat'])['soil_co2_nitrogen'].diff().rename('soil_co2_nitrogen_change')
         nitro.fillna(0, inplace=True)
 
-        #9 Geohashing to create cluster zones
-        geohash_str = X.apply(lambda x: gh.encode(x['lat'], x['lon'], precision=4), axis=1)
+        #8 Geohashing to create cluster zones
+        geohash_str = X.apply(lambda x: gh.encode(x['lat'], x['lon'], precision=6), axis=1)
         
         # Convert string hash to a deterministic integer (hashing)
         # This avoids needing to fit a LabelEncoder that you would have to save/load later
@@ -239,11 +248,15 @@ class Preprocessing_ml:
         del geohash_str
         gc.collect()
 
-        #10 tout le reste
-        X_raw_features = X.iloc[:, 6:]
+        #9 tout le reste
+        cols_already_extracted = ['ID', 'crop', 'lon', 'lat', 'season_year', 'real_year', 'texture_class']
+        X_raw_features = X.drop(columns=[c for c in cols_already_extracted if c in X.columns], errors='ignore')
+
+        # Pour constant, on s'assure d'avoir l'ID
+        constant = X[cols_already_extracted]
 
         # Returning featured df 
-        X = pd.concat([year, geo_region, constant, texture, co2, nitro,
+        X = pd.concat([constant, geo_region, texture, co2, nitro,
                        mean_pr,median_pr, sum_pr,min_pr,max_pr,
                        mean_tas, median_tas, min_tas, max_tas,
                        mean_rsds, median_rsds, sum_rsds,min_rsds,max_rsds, 
@@ -343,7 +356,7 @@ class Preprocessing_ml:
         if df is not None:
             path = self.processed_data_path / f"{filename}.csv"
             print(f"Saving {filename} ({df.shape})...")
-            df.to_csv(path, index=True)
+            df.to_csv(path, index=False)
 
     def _files_exist(self, filenames: list) -> bool:
             """Renvoie True si tous les fichiers de la liste existent."""

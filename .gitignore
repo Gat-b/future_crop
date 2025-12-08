@@ -4,6 +4,12 @@ notebook/
 test/
 processed_data/
 geo_coding/
+raw_data_wheat/
+raw_data_maize/
+raw_data_wheat.zip
+raw_data_maize.zip
+.venv/
+
 
 # Autres
 *.ipynb
@@ -11,3 +17,11 @@ geo_coding/
 *pycache*
 .log
 .temp
+
+# Artifacts Python
+future_crop.egg-info/
+*.egg
+*.egg-info/
+
+# Logs
+nohup.out

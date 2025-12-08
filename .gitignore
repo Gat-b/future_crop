@@ -17,8 +17,8 @@ raw_data_maize.zip
 *pycache*
 .log
 .temp
-# Artifacts Python
 
+# Artifacts Python
 future_crop.egg-info/
 *.egg
 *.egg-info/

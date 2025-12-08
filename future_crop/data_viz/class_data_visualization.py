@@ -12,9 +12,11 @@ class DataVisualization:
     """
     Utility class for visualizing data
     """
-    def __init__(self, geo_coding = "../geo_coding"):
+    def __init__(self, geo_coding = "../geo_coding", yield_forecasts = "../yield_forecasts"):
         self.geo_coding = Path(geo_coding)
         self.geo_coding.mkdir(parents=True, exist_ok=True)
+        self.yield_forecasts = Path(yield_forecasts)
+        self.yield_forecasts.mkdir(parents=True, exist_ok=True)
 
     def plot_forecast(self, y_pred: pd.Series, y_train: pd.Series,
                       y_test: pd.Series, upper: np.ndarray = None,
@@ -83,12 +85,13 @@ class DataVisualization:
         plt.tight_layout()
         plt.show()
 
-    def create_results_df(self, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None) -> pd.DataFrame:
+    def create_results_df(self, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None, model: str = None) -> pd.DataFrame:
         yield_df = pd.merge(X_val[["ID", "real_year", "lon_orig","lat_orig"]], y_val, how = 'inner', on = 'ID')
         if y_pred is not None:
             yield_df = pd.concat([yield_df, pd.Series(y_pred)], axis=1)
             yield_df["yield_diff"] = yield_df[0] - yield_df["yield"]
         yield_df["lon_lat"] = yield_df["lon_orig"].astype(str) + "_" + yield_df["lat_orig"].astype(str)
+        yield_df.to_csv(self.geo_coding / f"{model}_yield_df.csv", index=False)
         return yield_df
 
     def geo_plot(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,

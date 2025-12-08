@@ -9,6 +9,7 @@ raw_data_maize/
 raw_data_wheat.zip
 raw_data_maize.zip
 .venv/
+.python-version
 
 
 # Autres

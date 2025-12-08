@@ -4,6 +4,9 @@ from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, On
 from pathlib import Path
 import gc
 import pygeohash as gh
+import os
+import gcsfs  # pour accéder au bucket GCS
+
 
 
 # Racine du package "future_crop"

@@ -124,7 +124,43 @@ class DataVisualization:
         )
 
         fig.update_layout(title="diff vs. valuation yield")
-        fig.show()
+        # fig.show()
+
+        path = self.geo_coding / f"geo_plot.html"
+        fig.write_html(path)
+        return fig
+
+    def geo_plot_non_diff(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,
+                 y_pred: pd.Series = None):
+        """
+        Plots the yield difference.
+        Can be called with a pre-computed yield_df OR with raw data (X, y, pred) to compute it on the fly.
+        """
+
+        # 1. Automatic Execution: Create DataFrame if not provided
+        if yield_df is None:
+            if all(v is not None for v in [X_val, y_val, y_pred]):
+                print("Computing results DataFrame automatically...")
+                yield_df = self.create_results_df(X_val, y_val, y_pred)
+            else:
+                raise ValueError("You must provide either 'yield_df' OR 'X_val', 'y_val', and 'y_pred'.")
+
+        # 2. Plotting Logic (unchanged)
+        fig = px.scatter_geo(
+            data_frame=yield_df,
+            lat="lat_orig",
+            lon="lon_orig",
+            color="yield",
+            range_color=[0, 10],
+            size_max=0.001,
+            hover_name="yield_diff",
+            animation_frame="real_year",
+            projection="natural earth",
+            color_continuous_scale="Turbo_r"
+        )
+
+        fig.update_layout(title="diff vs. valuation yield")
+        # fig.show()
 
         path = self.geo_coding / f"geo_plot.html"
         fig.write_html(path)
@@ -144,8 +180,8 @@ class DataVisualization:
         #2. Plotting
         sns.histplot(yield_df["yield_diff"], bins=100)
 
-    def plotting_forecast(self, train_df: pd.DataFrame = None, yield_df: pd.DataFrame = None, n_loc: int = 5, 
-                          X_train: pd.DataFrame = None, y_train: pd.DataFrame = None, 
+    def plotting_forecast(self, train_df: pd.DataFrame = None, yield_df: pd.DataFrame = None, n_loc: int = 5,
+                          X_train: pd.DataFrame = None, y_train: pd.DataFrame = None,
                           X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None):
 
         # 1. Automatic Execution: Create DataFrame if not provided

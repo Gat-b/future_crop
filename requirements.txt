@@ -13,6 +13,7 @@ geopandas
 xgboost
 lightgbm
 catboost
+gcsfs
 # pyplot should be in matplotlib
 pyarrow
 pygeohash

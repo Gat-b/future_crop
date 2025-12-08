@@ -245,7 +245,7 @@ def save_model(model, filename, folder):
     return path
 
 
-def load_model(model, filename, folder):
+def load_model(filename, folder):
     """
     Load a persisted model from disk using joblib.load.
 
@@ -268,6 +268,8 @@ def load_model(model, filename, folder):
     - Raises an exception if the file does not exist or loading fails.
     - The function constructs the path with os.path.join(folder, filename) and calls joblib.load.
     """
+    if not os.path.isdir(folder):
+        raise FileNotFoundError(f"Le dossier spécifié n'existe pas : {folder}")
     
     path = os.path.join(folder, filename)
     model = load(path)

@@ -8,6 +8,8 @@ raw_data_wheat/
 raw_data_maize/
 raw_data_wheat.zip
 raw_data_maize.zip
+.venv/
+
 
 # Autres
 *.ipynb
@@ -15,3 +17,11 @@ raw_data_maize.zip
 *pycache*
 .log
 .temp
+
+# Artifacts Python
+future_crop.egg-info/
+*.egg
+*.egg-info/
+
+# Logs
+nohup.out

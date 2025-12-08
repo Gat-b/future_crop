@@ -110,6 +110,7 @@ class Preprocessing_ml:
             if self.use_bucket:
                 if not self.fs.exists(path):
                     raise FileNotFoundError(f"Fichier manquant sur GCS : {path}")
+                dfs.append(pd.read_parquet(path).add_prefix(file['file_name']))
             else:
                 if not Path(path).exists():
                     raise FileNotFoundError(f"Fichier manquant en local : {path}")

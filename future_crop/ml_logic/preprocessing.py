@@ -35,41 +35,92 @@ class Preprocessing_ml:
         # __file__ = .../future_crop/future_crop/ml_logic/preprocessing.py
         # On remonte de 3 niveaux pour atteindre la racine du repo future_crop/
         project_root = Path(__file__).resolve().parents[2]
+        
+        bucket_name = os.environ.get("BUCKET_NAME")
+        
+        if bucket_name:
+            # --- Mode BUCKET ---
+            self.use_bucket = True
+            self.bucket_name = bucket_name
 
-        # Répertoires des données
-        self.raw_data_path = project_root / "raw_data"
-        self.processed_data_path = project_root / "processed_data"
+            # Chemins GCS (simples strings)
+            self.raw_data_path = f"gs://{self.bucket_name}/raw_data"
+            self.processed_data_path = f"gs://{self.bucket_name}/processed_data"
 
-        # Crée processed_data si nécessaire
-        self.processed_data_path.mkdir(parents=True, exist_ok=True)
+            # FS pour tester l'existence et lister dans GCS
+            self.fs = gcsfs.GCSFileSystem()
+            print(f"[Preprocessing_ml] Using GCS bucket '{self.bucket_name}'")
+        
+        else:
+            # --- Mode LOCAL ---
+            self.use_bucket = False
+            self.bucket_name = None
+
+            # Répertoires des données
+            self.raw_data_path = project_root / "raw_data"
+            self.processed_data_path = project_root / "processed_data"
+
+            # Crée processed_data si nécessaire
+            self.processed_data_path.mkdir(parents=True, exist_ok=True)
+            self.fs = None
+            print(f"[Preprocessing_ml] Using local data at '{self.raw_data_path}'")
     
     ### Data loader - only local for now ###
     
     def load_raw_data(self, crop: str = 'wheat', mode: str = 'train') -> pd.DataFrame:
         """Charge et merge les fichiers parquet bruts."""
         print(f"Loading raw data for {crop} {mode}...")
-        crop_train_datasets = [
-            {'file_name': 'soil_co2_', 'path': self.raw_data_path / f'soil_co2_{crop}_{mode}.parquet'},
-            {'file_name': 'pr_', 'path': self.raw_data_path / f'pr_{crop}_{mode}.parquet'},
-            {'file_name': 'tas_', 'path': self.raw_data_path / f'tas_{crop}_{mode}.parquet'},
-            {'file_name': 'tasmin_', 'path': self.raw_data_path / f'tasmin_{crop}_{mode}.parquet'},
-            {'file_name': 'tasmax_', 'path': self.raw_data_path / f'tasmax_{crop}_{mode}.parquet'},
-            {'file_name': 'rsds_', 'path': self.raw_data_path / f'rsds_{crop}_{mode}.parquet'}]
+        
+        if self.use_bucket:
+            base = self.raw_data_path  # ex: "gs://future-crop-bucket/raw_data"
+            crop_train_datasets = [
+                {'file_name': 'soil_co2_', 'path': f"{base}/soil_co2_{crop}_{mode}.parquet"},
+                {'file_name': 'pr_',       'path': f"{base}/pr_{crop}_{mode}.parquet"},
+                {'file_name': 'tas_',      'path': f"{base}/tas_{crop}_{mode}.parquet"},
+                {'file_name': 'tasmin_',   'path': f"{base}/tasmin_{crop}_{mode}.parquet"},
+                {'file_name': 'tasmax_',   'path': f"{base}/tasmax_{crop}_{mode}.parquet"},
+                {'file_name': 'rsds_',     'path': f"{base}/rsds_{crop}_{mode}.parquet"},
+            ]
+            if mode == 'train':
+                crop_train_datasets.append(
+                    {'file_name': '', 'path': f"{base}/{mode}_solutions_{crop}.parquet"}
+                )
+        
+        else:
+            base = self.raw_data_path  # Path local
+            crop_train_datasets = [
+                {'file_name': 'soil_co2_', 'path': base / f'soil_co2_{crop}_{mode}.parquet'},
+                {'file_name': 'pr_',       'path': base / f'pr_{crop}_{mode}.parquet'},
+                {'file_name': 'tas_',      'path': base / f'tas_{crop}_{mode}.parquet'},
+                {'file_name': 'tasmin_',   'path': base / f'tasmin_{crop}_{mode}.parquet'},
+                {'file_name': 'tasmax_',   'path': base / f'tasmax_{crop}_{mode}.parquet'},
+                {'file_name': 'rsds_',     'path': base / f'rsds_{crop}_{mode}.parquet'},
+            ]
 
-        if mode == 'train':
-            crop_train_datasets.append(
-                {'file_name': '', 'path': self.raw_data_path / f'{mode}_solutions_{crop}.parquet'})
+            if mode == 'train':
+                crop_train_datasets.append(
+                    {'file_name': '', 'path': base / f'{mode}_solutions_{crop}.parquet'})
         
         
         dfs = []
         for file in crop_train_datasets:
+            path = file['path']
+            
             # Vérification basique si le fichier existe
-            if not file['path'].exists():
-                raise FileNotFoundError(f"Fichier manquant : {file['path']}")
-            dfs.append(pd.read_parquet(file['path']).add_prefix(file['file_name']))
-        
-        print("Concatenating columns...")
+            if self.use_bucket:
+                if not self.fs.exists(path):
+                    raise FileNotFoundError(f"Fichier manquant sur GCS : {path}")
+            else:
+                if not Path(path).exists():
+                    raise FileNotFoundError(f"Fichier manquant en local : {path}")
+                
+                print(f"Reading {path} ...")
+                dfs.append(pd.read_parquet(path).add_prefix(file['file_name']))
+                
+                
         # L'alignement se fait sur l'index (ID) automatiquement ici
+        print("Concatenating columns...")
+
         df_full = pd.concat(dfs, axis=1)
         
         # --- FIX MAJEUR ICI ---
@@ -77,7 +128,7 @@ class Preprocessing_ml:
         df_full.index.name = 'ID' 
         df_full.reset_index(inplace=True)
         
-        print(f"Data loaded with shape {df_full.shape} and ID column extracted.")    
+        print(f"Data loaded with shape {df_full.shape} and ID column extracted.")
         return df_full
      
     ### Compression function to save RAM ###
@@ -357,13 +408,20 @@ class Preprocessing_ml:
 
     def save_df(self, df, filename):
         if df is not None:
-            path = self.processed_data_path / f"{filename}.csv"
-            print(f"Saving {filename} ({df.shape})...")
+            if self.use_bucket:
+                path = f"{self.processed_data_path}/{filename}.csv"  # gs://bucket/processed_data/xxx.csv
+            else:
+                path = self.processed_data_path / f"{filename}.csv"
+
+            print(f"Saving {filename} ({df.shape}) to {path} ...")
             df.to_csv(path, index=False)
 
     def _files_exist(self, filenames: list) -> bool:
-            """Renvoie True si tous les fichiers de la liste existent."""
-            return all((self.processed_data_path / f).exists() for f in filenames)
+         """Renvoie True si tous les fichiers de la liste existent (local ou GCS)."""
+         if self.use_bucket:
+             return all(self.fs.exists(f"{self.processed_data_path}/{f}") for f in filenames)
+         else:
+             return all((self.processed_data_path / f).exists() for f in filenames)
     
     ### Handling 2 cases: exploratory and full production cases ###
 

@@ -4,6 +4,8 @@ from sklearn.ensemble import GradientBoostingRegressor, AdaBoostRegressor, Rando
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
+import os
+from joblib import dump, load
 
 
 
@@ -55,7 +57,6 @@ def model_selection(X, y, model_dict, params_dict):
         best_estimator_dict[name] = result.best_estimator_
 
     return score_dict, best_params_dict, best_estimator_dict
-
 
 
 def model_selection_randomize(X, y, model_dict, params_dict):
@@ -116,7 +117,6 @@ def model_selection_randomize(X, y, model_dict, params_dict):
     return score_dict, best_params_dict, best_estimator_dict
 
 
-
 def model_fit(X, y, model):
     """
     Fit a model on the provided data and return the fitted estimator.
@@ -139,6 +139,7 @@ def model_fit(X, y, model):
 
     return model
 
+
 def model_predict(X, model):
     """
     Predict target values using a fitted model.
@@ -158,6 +159,7 @@ def model_predict(X, model):
     y_pred = model.predict(X)
 
     return y_pred
+
 
 def model_score(X, y, model):
     """
@@ -180,3 +182,94 @@ def model_score(X, y, model):
     score = model.score(X, y)
 
     return score
+
+
+def select_region(X, y, region):
+    """
+    Select rows of X and y corresponding to a specific geographic region.
+
+    Parameters
+    ----------
+    X : pandas.DataFrame
+        Feature dataframe that must contain a 'geo_region' column and an 'ID' column.
+    y : pandas.DataFrame or pandas.Series
+        Target dataframe/series that must contain an 'ID' column for joining/filtering.
+    region : str or int
+        Region identifier to filter X['geo_region'].
+
+    Returns
+    -------
+    X_region : pandas.DataFrame
+        Subset of X where 'geo_region' == region, index reset.
+    y_region : pandas.DataFrame or pandas.Series
+        Subset of y whose 'ID' values are present in the selected X_region, index reset.
+
+    Notes
+    -----
+    - The function filters X by the 'geo_region' column then selects y rows with IDs
+      matching the filtered X. Both returned objects have their indices reset.
+    """
+    X_region = X[X['geo_region'] == region].reset_index(drop=True)
+    y_region = y[y['ID'].isin(X_region['ID'])].reset_index(drop=True)
+
+    return X_region, y_region
+
+
+def save_model(model, filename, folder):
+    """
+    Save a fitted model to disk using joblib.dump.
+
+    Parameters
+    ----------
+    model : estimator
+        Fitted estimator to persist.
+    filename : str
+        Filename for the saved model (e.g. 'model.joblib').
+    folder : str
+        Destination folder path. Created if it does not exist.
+
+    Returns
+    -------
+    path : str
+        Full path to the saved model file.
+
+    Notes
+    -----
+    - Uses os.makedirs(..., exist_ok=True) to ensure the folder exists.
+    - Uses joblib.dump to write the model to disk.
+    """
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, filename)
+    dump(model, path)
+
+    return path
+
+
+def load_model(model, filename, folder):
+    """
+    Load a persisted model from disk using joblib.load.
+
+    Parameters
+    ----------
+    model : ignored
+        Placeholder parameter (not used). Kept for API symmetry with save_model.
+    filename : str
+        Filename of the saved model (e.g. 'model.joblib').
+    folder : str
+        Folder path containing the saved model file.
+
+    Returns
+    -------
+    model : estimator
+        The loaded estimator instance.
+
+    Notes
+    -----
+    - Raises an exception if the file does not exist or loading fails.
+    - The function constructs the path with os.path.join(folder, filename) and calls joblib.load.
+    """
+    
+    path = os.path.join(folder, filename)
+    model = load(path)
+
+    return model

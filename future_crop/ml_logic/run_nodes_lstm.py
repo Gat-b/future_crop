@@ -16,18 +16,18 @@ def run():
     X_test_path  = f"{BASE}/X_test_{CROP}_full.csv"
 
     print("🔹 Loading data...")
-    X_train = pd.read_csv(X_train_path)
-    y_train = pd.read_csv(y_train_path)
+    X_train = pd.read_csv(X_train_path, nrows=10000)
+    y_train = pd.read_csv(y_train_path, nrows=10000)
 
-    X_test  = pd.read_csv(X_test_path)
+    X_test  = pd.read_csv(X_test_path, nrows=10000)
     
 
     print("Shapes :", X_train.shape, y_train.shape, X_test.shape)
 
     y_pred = pipeline_nodes_all(
-        X_train=X_train.head(10000),
-        y_train=y_train.head(10000),
-        X_test=X_test.head(10000),
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
         n_neighbors=8,
         nb_features=7,
         batch_nodes=16,
@@ -41,3 +41,7 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+X_train_wheat_full.csv 
+b/future-crop-bucket/o/processed_data%2FX_train_wheat_full.csv

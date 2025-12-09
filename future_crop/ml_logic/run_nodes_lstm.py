@@ -11,10 +11,10 @@ def run():
     BUCKET_NAME = os.getenv("BUCKET_NAME", "future-crop-bucket")
     BASE = f"gs://{BUCKET_NAME}/processed_data"
 
-    X_train_path = f"{BASE}/X_train_{CROP}_full.csv"
-    y_train_path = f"{BASE}/y_train_{CROP}_full.csv"
-    X_val_path = f"{BASE}/X_val_{CROP}_full.csv"
-    y_val_path = f"{BASE}/y_val_{CROP}_full.csv"
+    X_train_path = f"{BASE}/X_train_{CROP}_explo.csv"
+    y_train_path = f"{BASE}/y_train_{CROP}_explo.csv"
+    X_val_path = f"{BASE}/X_val_{CROP}_explo.csv"
+    y_val_path = f"{BASE}/y_val_{CROP}_explo.csv"
     X_test_path  = f"{BASE}/X_test_{CROP}_full.csv"
 
     print("🔹 Loading data...")

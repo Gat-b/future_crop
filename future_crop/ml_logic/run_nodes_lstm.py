@@ -16,7 +16,6 @@ def run():
     X_val_path = f"{BASE}/X_val_{CROP}_explo.csv"
     y_val_path = f"{BASE}/y_val_{CROP}_explo.csv"
     X_test_path  = f"{BASE}/X_test_{CROP}_full.csv"
-    X_test_wheat_full.csv
 
     print("🔹 Loading data...")
     X_train = pd.read_csv(X_train_path)

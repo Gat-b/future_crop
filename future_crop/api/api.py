@@ -8,7 +8,7 @@ import os
 
 ### Loading package functions and dfs ###
 # from future_crop.ml_logic.function import *
-from future_crop.params import RESULT_PATH_STORAGE
+from future_crop.params import RESULT_PATH_STORAGE, BUCKET_NAME
 
 app = FastAPI(title="Future Crop API")
 
@@ -37,19 +37,33 @@ def get_yield(model: str = "knn"):
     """
     # Construct the path dynamically based on the model parameter
     filename = f"{model}_yield_pred.csv"
-    path = os.path.join(RESULT_PATH_STORAGE, filename)
+    # path = os.path.join(RESULT_PATH_STORAGE, filename)
+    path = f"gs://{BUCKET_NAME}/yield_forecasts/{filename}"
     
-    print(f"DEBUG: Searching for file at -> {path}")
-    
-    if os.path.exists(path): 
-        result_df = pd.read_csv(path)
-        # CONVERSION REQUIRED: FastAPI needs a dict/list, not a DataFrame
-        return result_df.to_json()
-    else:
-        return {"error": f"File not found for model: {model} at path: {path}"}
+    # if os.path.exists(path): 
+    #     result_df = pd.read_csv(path)
+    #     # CONVERSION REQUIRED: FastAPI needs a dict/list, not a DataFrame
+    #     return result_df.to_json()
+    # else:
+    #     return {"error": f"File not found for model: {model} at path: {path}"}
 
+    # 2. On essaie de lire directement (sans os.path.exists)
+    try:
+        # Pandas va utiliser gcsfs pour aller chercher le fichier via le réseau
+        result_df = pd.read_csv(path)
+        return result_df.to_json()
+        
+    except Exception as e:
+        # En cas d'erreur (fichier inexistant ou permissions), on l'affiche
+        return {
+            "error": "Impossible de lire le fichier",
+            "path": path,
+            "details": str(e)
+        }
 
 ### Prediction ###
+
+
 
 # @app.get("/predict")
 # def predict(

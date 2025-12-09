@@ -3,6 +3,8 @@ import numpy as np
 
 ##################  VARIABLES  ################## TBU
 GCP_PROJECT = os.environ.get("GCP_PROJECT")
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT")
+
 GCP_PROJECT_WAGON = os.environ.get("GCP_PROJECT_WAGON")
 GCP_REGION = os.environ.get("GCP_REGION")
 BQ_DATASET = os.environ.get("BQ_DATASET")
@@ -36,10 +38,6 @@ elif PLATFORM == "gcp":
     pass
 
 
-# COLUMN_NAMES_RAW = ['fare_amount','pickup_datetime', 'pickup_longitude', 'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude', 'passenger_count']
-
-DTYPES_RAW = {
-}
 
 DTYPES_PROCESSED = np.float32
 

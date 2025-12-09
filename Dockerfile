@@ -12,7 +12,7 @@ COPY setup.py setup.py
 
 RUN pip install .
 
-COPY yield_forecasts yield_forecasts
+# COPY yield_forecasts yield_forecasts
 
 ENV PLATFORM=docker
 

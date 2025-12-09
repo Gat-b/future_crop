@@ -9,11 +9,11 @@ BQ_DATASET = os.environ.get("BQ_DATASET")
 BQ_REGION = os.environ.get("BQ_REGION")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 INSTANCE = os.environ.get("INSTANCE")
-MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI")
-MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT")
-MLFLOW_MODEL_NAME = os.environ.get("MLFLOW_MODEL_NAME")
-PREFECT_FLOW_NAME = os.environ.get("PREFECT_FLOW_NAME")
-PREFECT_LOG_LEVEL = os.environ.get("PREFECT_LOG_LEVEL")
+# MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI")
+# MLFLOW_EXPERIMENT = os.environ.get("MLFLOW_EXPERIMENT")
+# MLFLOW_MODEL_NAME = os.environ.get("MLFLOW_MODEL_NAME")
+# PREFECT_FLOW_NAME = os.environ.get("PREFECT_FLOW_NAME")
+# PREFECT_LOG_LEVEL = os.environ.get("PREFECT_LOG_LEVEL")
 
 PLATFORM = os.environ.get("PLATFORM")
 
@@ -35,10 +35,8 @@ elif PLATFORM == "docker":
 elif PLATFORM == "gcp":
     pass
 
-elif PLATFORM == "gcp":
-    pass
 
-COLUMN_NAMES_RAW = ['fare_amount','pickup_datetime', 'pickup_longitude', 'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude', 'passenger_count']
+# COLUMN_NAMES_RAW = ['fare_amount','pickup_datetime', 'pickup_longitude', 'pickup_latitude', 'dropoff_longitude', 'dropoff_latitude', 'passenger_count']
 
 DTYPES_RAW = {
 }

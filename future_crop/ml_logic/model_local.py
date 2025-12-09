@@ -730,5 +730,12 @@ def pipeline_nodes_all(X_train, y_train, X_test,
     X_test_tensor, id_test = preproc_nodes_x(X_test, coord_all, A_all, nb_features, test=False)
     y_pred = predict_local_models(models, X_test_tensor, id_test, A_all, n_neighbors)
     y_pred.set_index('ID', inplace=True)
-    return y_pred
 
+    # --- Enregistrer en CSV ---
+    X_test_set = X_test[["Unnamed: 0", "real_year", "lon_orig","lat_orig"]]
+    X_test_set = X_test_set.rename(columns={'Unnamed: 0': 'ID'})
+    y_pred_df = X_test_set.merge(y_pred, how='left', left_on='ID', right_index=True)
+
+    y_pred_df.to_csv("y_pred_wheat.csv")
+
+    return y_pred_df

@@ -13,8 +13,12 @@ future_crop/data_viz/__init__.py
 future_crop/data_viz/class_data_visualization.py
 future_crop/ml_logic/__init__.py
 future_crop/ml_logic/baseline.py
+future_crop/ml_logic/convlstm.py
 future_crop/ml_logic/function.py
-future_crop/ml_logic/model_convlstm.py
+future_crop/ml_logic/gru_lstm.py
+future_crop/ml_logic/model_convgcn.py
+future_crop/ml_logic/model_local.py
 future_crop/ml_logic/model_params.py
+future_crop/ml_logic/preproc_model_gnc.py
 future_crop/ml_logic/preprocessing.py
 future_crop/ml_logic/submission_kaggle.py

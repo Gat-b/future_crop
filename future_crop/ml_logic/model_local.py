@@ -334,9 +334,13 @@ def train_local_models(X_tensor_train, y_tensor_train, X_tensor_val, y_tensor_va
         y_val_node = y_tensor_val[:, node_id, :]
 
         # --- Callbacks ---
-        es = EarlyStopping(patience=10,
-                        restore_best_weights=True,
-                        monitor='val_rmse')
+        es = EarlyStopping(
+                    patience=10,
+                    restore_best_weights=True,
+                    monitor='val_rmse',
+                    mode='min'
+                )
+
 
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                                 patience=2, min_lr=1e-6)
@@ -405,7 +409,12 @@ def train_local_models_batched(
         y_val_flat = tf.reshape(tf.stack(y_val_batch), (B * y_val_batch[0].shape[0], 1))
 
         # Callbacks
-        es = EarlyStopping(patience=5, restore_best_weights=True, monitor='val_rmse')
+        es = EarlyStopping(
+                        patience=5,
+                        restore_best_weights=True,
+                        monitor='val_rmse',
+                        mode='min'
+                    )
         rl = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3)
 
         # Modèle partagé pour ce batch
@@ -474,7 +483,13 @@ def train_local_models_batched_all(
         #y_val_flat = tf.reshape(tf.stack(y_val_batch), (B * y_val_batch[0].shape[0], 1))
 
         # Callbacks
-        es = EarlyStopping(patience=5, restore_best_weights=True, monitor='val_rmse')
+        es = EarlyStopping(
+                        patience=5,
+                        restore_best_weights=True,
+                        monitor='val_rmse',
+                        mode='min'
+                    )
+
         rl = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3)
 
         # Modèle partagé pour ce batch

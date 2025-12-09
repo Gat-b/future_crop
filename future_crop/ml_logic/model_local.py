@@ -82,7 +82,7 @@ def impute_neighbors(tensor, A):
 
     return Output_tensor
 
-def preproc_nodes(X, y, coord, A, nb_features=7, test=False):
+def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
     '''
     Docstring pour preproc_gcn_X
 
@@ -91,6 +91,10 @@ def preproc_nodes(X, y, coord, A, nb_features=7, test=False):
     :param features_num: 5
     :param coord: pd.df coord (lat, lon) unique
     '''
+    ### Copy
+    X = X_bef.copy()
+    y = y_bef.copy()
+
     ### Params
     years = sorted(X['real_year'].unique())
     nb_years = len(years)
@@ -180,6 +184,73 @@ def preproc_nodes(X, y, coord, A, nb_features=7, test=False):
 
     return X_tensor, y_tensor, id
 
+def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
+    """
+    Prétraite les données pour un modèle local en renvoyant le tenseur X et l'ID associé.
+
+    :param X_bef: pd.DataFrame, données avec colonnes temporelles + 'lat_orig', 'lon_orig', 'real_year', 'Unnamed: 0'
+    :param coord: pd.DataFrame, coordonnées uniques des nodes avec colonnes ['lat_orig','lon_orig']
+    :param A: np.array, matrice d'adjacence
+    :param nb_features: int, nombre de features
+    :param test: bool, si True on garde la correspondance avec ID test
+    :return:
+        - X_tensor: np.array, shape (nb_years, nb_nodes, nb_features, 240)
+        - id_tensor: np.array, shape (nb_years, nb_nodes, 1), ID correspondant
+    """
+
+    X = X_bef.copy()
+
+    # --- Paramètres ---
+    years = sorted(X['real_year'].unique())
+    nb_years = len(years)
+    nb_nodes = len(coord)
+
+    # --- Préprocessing temporel ---
+    X_set = make_temporal_features(X)
+    X_time = time_columns_selection_orig(X_set)
+
+    # --- Initialisation des tenseurs ---
+    X_tensor = np.zeros((nb_years, nb_nodes, nb_features, 240), dtype=float)
+    id_tensor = np.zeros((nb_years, nb_nodes, 1), dtype=float)
+
+    # --- Mapping coord -> node index ---
+    coord_index = { tuple(c): i for i, c in enumerate(coord[['lat_orig','lon_orig']].itertuples(index=False)) }
+
+    # --- Remplissage des tenseurs ---
+    for id_year, year in enumerate(years):
+        X_year = X_time[X_time['real_year'] == year]
+
+        for x_node in X_year.itertuples(index=False):
+            lat = getattr(x_node, 'lat_orig')
+            lon = getattr(x_node, 'lon_orig')
+
+            # Vérifie que le node existe dans coord
+            if (lat, lon) not in coord_index:
+                continue
+            node_id = coord_index[(lat, lon)]
+
+            # Extraction des features temporelles
+            X_series = np.array(x_node[:-4]).reshape(nb_features, 240)
+            X_tensor[id_year, node_id] = X_series
+
+            # ID correspondant
+            index_row = X.loc[
+                (X['lat_orig'] == lat) &
+                (X['lon_orig'] == lon) &
+                (X['real_year'] == year),
+                'Unnamed: 0'
+            ].values[0]
+
+            id_tensor[id_year, node_id] = index_row
+
+    # --- Imputation des valeurs manquantes par les voisins ---
+    X_tensor = impute_neighbors(X_tensor, A)
+
+    print("Shape de X_tensor:", X_tensor.shape)
+    print("Shape de id_tensor:", id_tensor.shape)
+
+    return X_tensor, id_tensor
+
 
 # ------------------------
 # Identification des voisins
@@ -202,7 +273,7 @@ def rmse(y_true, y_pred):
 
 def rmse_df(df_true, df_pred):
     # Fusionner les data_frame
-    merge_df = df_true.merge(df_pred, on='ID', how='left')
+    merge_df = df_true.merge(df_pred, right_index=True, left_index=True, how='left')
 
     # Extraction des valeurs
     y_true = merge_df['yield'].astype(float).to_numpy()
@@ -350,6 +421,76 @@ def train_local_models_batched(
     print("\n🎉 Training terminé !")
     return models
 
+def train_local_models_batched_all(
+        X_tensor_train, y_tensor_train,
+        A, n_neighbors=5,
+        batch_nodes=16,
+        epochs=10,
+        batch_size=2):
+    """
+    Entraîne les modèles locaux par batch de nodes.
+    Chaque batch partage un modèle, entraîné sur (B * years) exemples.
+    """
+    n_years, n_nodes, timesteps, n_features = X_tensor_train.shape
+    neighbors_idx = get_neighbors_idx(A, n_neighbors)
+    models = [None] * n_nodes
+
+    print(f"\n### Entraînement batché : {batch_nodes} modèles en parallèle ###\n")
+
+    for start in tqdm(range(0, n_nodes, batch_nodes), desc="Training"):
+        end = min(start + batch_nodes, n_nodes)
+        batch_ids = list(range(start, end))
+
+        # Préparer batchs
+        X_train_batch, y_train_batch = [], []
+        #X_val_batch, y_val_batch = [], []
+
+        for node_id in batch_ids:
+            selected_ids = [node_id] + neighbors_idx[node_id]
+
+            Xn_train = tf.gather(X_tensor_train, selected_ids, axis=1)
+            Xn_train = tf.reshape(Xn_train, (n_years, timesteps, (n_neighbors + 1) * n_features))
+            yn_train = y_tensor_train[:, node_id, :]
+
+            #Xn_val = tf.gather(X_tensor_val, selected_ids, axis=1)
+            #Xn_val = tf.reshape(Xn_val, (Xn_val.shape[0], timesteps, (n_neighbors + 1) * n_features))
+            #yn_val = y_tensor_val[:, node_id, :]
+
+            X_train_batch.append(Xn_train)
+            y_train_batch.append(yn_train)
+            #X_val_batch.append(Xn_val)
+            #y_val_batch.append(yn_val)
+
+        # Convertir en tensors batchés
+        B = len(batch_ids)
+        X_train_flat = tf.reshape(tf.stack(X_train_batch), (B * n_years, timesteps, (n_neighbors + 1) * n_features))
+        y_train_flat = tf.reshape(tf.stack(y_train_batch), (B * n_years, 1))
+        #X_val_flat = tf.reshape(tf.stack(X_val_batch), (B * X_val_batch[0].shape[0], timesteps, (n_neighbors + 1) * n_features))
+        #y_val_flat = tf.reshape(tf.stack(y_val_batch), (B * y_val_batch[0].shape[0], 1))
+
+        # Callbacks
+        es = EarlyStopping(patience=5, restore_best_weights=True, monitor='val_rmse')
+        rl = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3)
+
+        # Modèle partagé pour ce batch
+        model = lstm_model((timesteps, (n_neighbors + 1) * n_features))
+        model.fit(
+            X_train_flat, y_train_flat,
+            validation_split=0.2,
+            epochs=epochs,
+            batch_size=batch_size,
+            callbacks=[es, rl],
+            shuffle=False,
+            verbose=0
+        )
+
+        # Enregistrer le modèle pour chaque node du batch
+        for node_id in batch_ids:
+            models[node_id] = model
+
+    print("\n🎉 Training terminé !")
+    return models
+
 
 
 # ------------------------
@@ -434,6 +575,62 @@ def evaluate_local_models(
 
     return rmse_per_node, rmse_global, df_preds
 
+# ------------------------
+# Prediction
+# ------------------------
+
+def predict_local_models(models, X_test_tensor, id_test, A, n_neighbors=5):
+    """
+    Prédit le rendement pour chaque node à partir de X_test_tensor et retourne un DataFrame.
+
+    Paramètres
+    ----------
+    models : liste de modèles locaux
+    X_test_tensor : np.array ou tf.Tensor, shape = (years, nodes, timesteps, features)
+    id_test : np.array shape = (years, nodes, 1) → contient l'ID réel ('Unnamed: 0')
+    A : np.array, matrice d'adjacence
+    n_neighbors : int, nombre de voisins à utiliser pour chaque node
+
+    Retour
+    ------
+    df_preds : pd.DataFrame avec colonnes ['ID', 'yield_pred']
+    """
+    n_years, n_nodes, timesteps, n_features = X_test_tensor.shape
+    neighbors_idx = get_neighbors_idx(A, n_neighbors)
+
+    df_list = []
+
+    for node_id in range(n_nodes):
+        model = models[node_id]
+        if model is None:
+            continue  # on saute les nodes sans modèle
+
+        # récupérer les voisins
+        selected_ids = [node_id] + neighbors_idx[node_id]
+
+        # extraire les features locales
+        Xn = tf.gather(X_test_tensor, selected_ids, axis=1)
+        Xn = tf.reshape(Xn, (n_years, timesteps, (n_neighbors + 1) * n_features))
+
+        # prédiction
+        y_pred = model.predict(Xn, verbose=0)
+
+        # récupérer les ID pour ce node
+        ids_node = id_test[:, node_id, 0].astype(int)
+
+        # créer un DataFrame pour ce node
+        df_node = pd.DataFrame({
+            "ID": ids_node,
+            "yield_pred": y_pred.flatten()
+        })
+
+        df_list.append(df_node)
+
+    # concaténer tous les nodes
+    df_preds = pd.concat(df_list, axis=0).reset_index(drop=True)
+
+    return df_preds
+
 
 # ------------------------
 # Pipeline
@@ -497,4 +694,41 @@ def pipeline_nodes(X_train, y_train, X_val, y_val, X_test, y_test,
 
     print(f"\n RMSE Global sur l'ensemble des nodes : {round(rmse_global, 3)}")
 
-    return models, rmse_per_node, rmse_global, preds_all
+    return models, coord_all, rmse_per_node, rmse_global, preds_all
+
+
+def pipeline_nodes_all(X_train, y_train, X_test,
+                   n_neighbors=5, nb_features=7, batch_nodes=16, batch_size=2,
+                   epochs=20) :
+
+    print("\n Lancement du pipeline_nodes...")
+
+    # --- Fix problème d'arrondi ---
+    X_train['lat_orig'] = X_train['lat_orig'].round(6)
+    X_train['lon_orig'] = X_train['lon_orig'].round(6)
+
+    # --- Création de A prenant en compte l'ensemble des points géographiques ---
+    print("\n Création de la matrice A...")
+    coord_all, A_all = matrice_adj(X_train, n_neighbors)
+
+    # --- Préprocessing ---
+    print("\n Lancement du preprocessing du train")
+    X_tensor_train, y_tensor_train, id_train = preproc_nodes(X_train, y_train, coord_all, A_all, nb_features, test=False)
+
+
+    # --- Models par node ---
+    models = train_local_models_batched_all(
+        X_tensor_train, y_tensor_train,
+        A_all, n_neighbors,
+        batch_nodes,
+        epochs,
+        batch_size)
+
+    print("\n🎉 Models fit et evalués !")
+
+    # --- Predict ---
+    X_test_tensor, id_test = preproc_nodes_x(X_test, coord_all, A_all, nb_features, test=False)
+    y_pred = predict_local_models(models, X_test_tensor, id_test, A_all, n_neighbors)
+    y_pred.set_index('ID', inplace=True)
+    return y_pred
+

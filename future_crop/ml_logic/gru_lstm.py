@@ -17,6 +17,8 @@ def make_temporal_features(X:pd.DataFrame) -> pd.DataFrame:
     when a feature in fixed during the period of 240 days,
     it is copied as 240 new features.
     '''
+    X = X.copy()
+    
     number_of_copies = 240 # corresponds to the specifics of future_crop project
 
     for index in range(number_of_copies):

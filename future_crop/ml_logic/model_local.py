@@ -163,7 +163,7 @@ def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
                 index = X.loc[(X['lat_orig'] == lat) &
                                             (X['lon_orig'] == lon) &
                                             (X['real_year'] == real_year),
-                                            'Unnamed: 0'].values[0]
+                                            'ID'].values[0]
 
                 id[id_year, node_id] = y.loc[index, 'ID']
 
@@ -171,7 +171,7 @@ def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
                 id[id_year, node_id] = X.loc[(X['lat_orig'] == lat) &
                                             (X['lon_orig'] == lon) &
                                             (X['real_year'] == real_year),
-                                            'Unnamed: 0'].values[0]
+                                            'ID'].values[0]
 
     ## Ajout des valeurs manquantes par les moyennes des voisins
     X_tensor = impute_neighbors(X_tensor, A)
@@ -238,7 +238,7 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
                 (X['lat_orig'] == lat) &
                 (X['lon_orig'] == lon) &
                 (X['real_year'] == year),
-                'Unnamed: 0'
+                'ID'
             ].values[0]
 
             id_tensor[id_year, node_id] = index_row
@@ -732,8 +732,7 @@ def pipeline_nodes_all(X_train, y_train, X_test,
     y_pred.set_index('ID', inplace=True)
 
     # --- Enregistrer en CSV ---
-    X_test_set = X_test[["Unnamed: 0", "real_year", "lon_orig","lat_orig"]]
-    X_test_set = X_test_set.rename(columns={'Unnamed: 0': 'ID'})
+    X_test_set = X_test[["ID", "real_year", "lon_orig","lat_orig"]]
     y_pred_df = X_test_set.merge(y_pred, how='left', left_on='ID', right_index=True)
 
     y_pred_df.to_csv("y_pred_wheat.csv")

@@ -139,7 +139,7 @@ def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
                 continue
 
             # Extraction de la série temporelle (240 jours, features_num)
-            X_series = np.array(x_node[:-4]).reshape(nb_features, 240)
+            X_series = np.array(x_node[:-5]).reshape(nb_features, 240)
 
             # Injection dans le tenseur final
             X_tensor[id_year, node_id] = X_series
@@ -230,7 +230,7 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
             node_id = coord_index[(lat, lon)]
 
             # Extraction des features temporelles
-            X_series = np.array(x_node[:-4]).reshape(nb_features, 240)
+            X_series = np.array(x_node[:-5]).reshape(nb_features, 240)
             X_tensor[id_year, node_id] = X_series
 
             # ID correspondant

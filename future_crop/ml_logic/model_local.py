@@ -482,16 +482,19 @@ def pipeline_nodes(X_train, y_train, X_val, y_val, X_test, y_test,
 
     # --- Evaluation ---
     print("\n Lancement de l'évaluation sur le test...")
-    # rmse_per_node, rmse_global, preds_all = evaluate_local_models(
-    #      models,
-    #      X_tensor_test,
-    #      y_tensor_test,
-    #      y_test,
-    #      id_test,
-    #      A_all,
-    #      n_neighbors)
+    rmse_per_node, rmse_global, preds_all = evaluate_local_models(
+         models,
+         X_tensor_test,
+         y_tensor_test,
+         y_test,
+         id_test,
+         A_all,
+         n_neighbors)
 
     # --- Output ---
 
     print("\n🎉 Models fit et evalués !")
-    return models, X_tensor_test, y_tensor_test, id_test
+
+    print(f"\n RMSE Global sur l'ensemble des nodes : {round(rmse_global, 3)}")
+
+    return models, rmse_per_node, rmse_global, preds_all

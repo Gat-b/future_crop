@@ -10,7 +10,6 @@ RUN pip install -r requirements.txt
 COPY future_crop future_crop
 COPY setup.py setup.py
 
-
 RUN pip install .
 
 # COPY yield_forecasts yield_forecasts

@@ -19,10 +19,21 @@ PLATFORM = os.environ.get("PLATFORM")
 
 ##################  CONSTANTS  #####################
 if PLATFORM == "local":
-    LOCAL_DATA_PATH = os.path.join(os.path.expanduser('~'), "gat_b", "future_crop", "raw_data")
-    LOCAL_REGISTRY_PATH =  os.path.join(os.path.expanduser('~'), "gat_b", "future_crop", "processed_data")
-    MODEL_PATH_STORAGE = os.path.join(os.path.expanduser('~'), "gat_b", "future_crop", "models")
-    RESULT_PATH_STORAGE = os.path.join(os.path.expanduser('~'), "gat_b", "future_crop", "yield_forecasts")
+    LOCAL_DATA_PATH = os.path.join(os.path.expanduser('~'), "code", "gat_b", "future_crop", "raw_data")
+    LOCAL_REGISTRY_PATH =  os.path.join(os.path.expanduser('~'), "code", "gat_b", "future_crop", "processed_data")
+    MODEL_PATH_STORAGE = os.path.join(os.path.expanduser('~'), "code", "gat_b", "future_crop", "models")
+    RESULT_PATH_STORAGE = os.path.join(os.path.expanduser('~'), "code", "gat_b", "future_crop", "yield_forecasts")
+
+elif PLATFORM == "docker":
+    # In Docker, we will create a folder called 'app' that contains everything
+    base_path = "/app"
+    LOCAL_DATA_PATH = os.path.join(base_path, "raw_data")
+    LOCAL_REGISTRY_PATH = os.path.join(base_path, "processed_data")
+    MODEL_PATH_STORAGE = os.path.join(base_path, "models")
+    RESULT_PATH_STORAGE = os.path.join(base_path, "yield_forecasts")
+
+elif PLATFORM == "gcp":
+    pass
 
 elif PLATFORM == "gcp":
     pass

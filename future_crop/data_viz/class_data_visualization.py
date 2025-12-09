@@ -12,11 +12,29 @@ class DataVisualization:
     """
     Utility class for visualizing data
     """
-    def __init__(self, geo_coding = "../geo_coding", yield_forecasts = "../yield_forecasts"):
-        self.geo_coding = Path(geo_coding)
-        self.geo_coding.mkdir(parents=True, exist_ok=True)
-        self.yield_forecasts = Path(yield_forecasts)
-        self.yield_forecasts.mkdir(parents=True, exist_ok=True)
+    def __init__(self, geo_coding: Path = None, yield_forecasts: Path = None):
+        current_file_path = Path(__file__).resolve()
+        project_root = current_file_path.parents[2] # Remonte de 2 crans pour atteindre la racine du projet
+        
+        # Si aucun chemin n'est fourni, on construit le chemin absolu par défaut
+        if geo_coding is None:
+            self.geo_coding = project_root / "geo_coding"
+        else:
+            self.geo_coding = Path(geo_coding)
+            
+        if yield_forecasts is None:
+            self.yield_forecasts = project_root / "yield_forecasts"
+        else:
+            self.yield_forecasts = Path(yield_forecasts)
+
+        # Création des dossiers si inexistants
+        
+        # self.geo_coding.mkdir(parents=True, exist_ok=True)
+        # self.yield_forecasts.mkdir(parents=True, exist_ok=True)
+        # self.geo_coding = Path(geo_coding)
+        # self.geo_coding.mkdir(parents=True, exist_ok=True)
+        # self.yield_forecasts = Path(yield_forecasts)
+        # self.yield_forecasts.mkdir(parents=True, exist_ok=True)
 
     def plot_forecast(self, y_pred: pd.Series, y_train: pd.Series,
                       y_test: pd.Series, upper: np.ndarray = None,
@@ -91,7 +109,7 @@ class DataVisualization:
             yield_df = pd.concat([yield_df, pd.Series(y_pred)], axis=1)
             yield_df["yield_diff"] = yield_df[0] - yield_df["yield"]
         yield_df["lon_lat"] = yield_df["lon_orig"].astype(str) + "_" + yield_df["lat_orig"].astype(str)
-        yield_df.to_csv(self.geo_coding / f"{model}_yield_df.csv", index=False)
+        yield_df.to_csv(self.yield_forecasts / f"{model}_yield_pred.csv", index=False)
         return yield_df
 
     def geo_plot(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,

@@ -40,7 +40,7 @@ def time_columns_selection_orig(X: pd.DataFrame) -> pd.DataFrame:
         [c for c in X.columns if 'rsds_' in c] + \
         [c for c in X.columns if 'CO2_' in c]  + \
         [c for c in X.columns if 'nitrogen_' in c] + \
-        ['Unnamed: 0', 'real_year', 'lon_orig', 'lat_orig']
+        ['ID', 'real_year', 'lon_orig', 'lat_orig']
 
     roll_columns = [c for c in X.columns if 'pr_roll' in c]
 

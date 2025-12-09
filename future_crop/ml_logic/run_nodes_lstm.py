@@ -25,9 +25,9 @@ def run():
     print("Shapes :", X_train.shape, y_train.shape, X_test.shape)
 
     y_pred = pipeline_nodes_all(
-        X_train=X_train.head(1000),
-        y_train=y_train.head(1000),
-        X_test=X_test.head(1000),
+        X_train=X_train.head(10000),
+        y_train=y_train.head(10000),
+        X_test=X_test.head(10000),
         n_neighbors=8,
         nb_features=7,
         batch_nodes=16,

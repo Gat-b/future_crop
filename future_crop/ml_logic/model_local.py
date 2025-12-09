@@ -269,7 +269,12 @@ def get_neighbors_idx(A, n_neighbors=5):
 # ------------------------
 
 def rmse(y_true, y_pred):
-    return K.sqrt(K.mean(K.square(y_pred - y_true), axis=None))
+    """
+    RMSE en TensorFlow pur (compatible Keras 3+)
+    """
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(y_pred, tf.float32)
+    return tf.sqrt(tf.reduce_mean(tf.square(y_pred - y_true)))
 
 def rmse_df(df_true, df_pred):
     # Fusionner les data_frame

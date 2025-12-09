@@ -36,7 +36,6 @@ flatbuffers==25.9.23
 fonttools==4.61.0
 fqdn==1.5.1
 fsspec==2025.10.0
--e git+ssh://git@github.com/gat-b/future_crop.git@337a9d6926cee7fe527f8c137f27a389b6ecdfd3#egg=future_crop
 gast==0.4.0
 geopandas==1.0.1
 google-api-core==2.8.2
@@ -152,12 +151,12 @@ six==1.17.0
 soupsieve==2.8
 stack-data==0.6.3
 starlette==0.50.0
-tensorboard==2.10.1
-tensorboard-data-server==0.6.1
-tensorboard-plugin-wit==1.8.1
-tensorflow==2.10.0
-tensorflow-estimator==2.10.0
-tensorflow-io-gcs-filesystem==0.37.1
+# tensorboard==2.10.1
+# tensorboard-data-server==0.6.1
+# tensorboard-plugin-wit==1.8.1
+# tensorflow==2.10.0
+# tensorflow-estimator==2.10.0
+# tensorflow-io-gcs-filesystem==0.37.1
 termcolor==3.2.0
 terminado==0.18.1
 threadpoolctl==3.6.0

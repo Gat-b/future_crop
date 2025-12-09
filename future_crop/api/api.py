@@ -4,10 +4,11 @@
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 ### Loading package functions and dfs ###
-from future_crop.ml_logic.function import *
-from future_crop.params import *
+# from future_crop.ml_logic.function import *
+from future_crop.params import RESULT_PATH_STORAGE
 
 app = FastAPI(title="Future Crop API")
 
@@ -22,9 +23,15 @@ app.add_middleware(
 )
 
 ### API ###
+@app.get("/")
+def root():
+    return {
+        "status": "API is running",
+        "message": "Use /yield?model=knn to get data"
+    }
 
 @app.get("/yield")
-def get_yield(model: str = "lgbm"):
+def get_yield(model: str = "knn"):
     """
     Returns the pre-calculated dataframe for the selected model.
     """
@@ -32,10 +39,12 @@ def get_yield(model: str = "lgbm"):
     filename = f"{model}_yield_pred.csv"
     path = os.path.join(RESULT_PATH_STORAGE, filename)
     
+    print(f"DEBUG: Searching for file at -> {path}")
+    
     if os.path.exists(path): 
         result_df = pd.read_csv(path)
         # CONVERSION REQUIRED: FastAPI needs a dict/list, not a DataFrame
-        return result_df.to_dict(orient='records') 
+        return result_df.to_json()
     else:
         return {"error": f"File not found for model: {model} at path: {path}"}
 

@@ -1,6 +1,7 @@
 ## Folders
 raw_data/
 notebook/
+notebooks/
 test/
 processed_data/
 geo_coding/
@@ -9,6 +10,8 @@ raw_data_maize/
 raw_data_wheat.zip
 raw_data_maize.zip
 .venv/
+.python-version
+yield_forecasts/
 
 
 # Autres

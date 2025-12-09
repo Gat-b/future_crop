@@ -6,7 +6,7 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 import os
 from joblib import dump, load
-
+from future_crop.params import *
 
 
 def model_selection(X, y, model_dict, params_dict):
@@ -215,7 +215,7 @@ def select_region(X, y, region):
     return X_region, y_region
 
 
-def save_model(model, filename, folder):
+def save_model(model, filename: str, folder: str = MODEL_PATH_STORAGE):
     """
     Save a fitted model to disk using joblib.dump.
 
@@ -224,7 +224,7 @@ def save_model(model, filename, folder):
     model : estimator
         Fitted estimator to persist.
     filename : str
-        Filename for the saved model (e.g. 'model.joblib').
+        Filename for the saved model (e.g. 'random_forest').
     folder : str
         Destination folder path. Created if it does not exist.
 
@@ -238,6 +238,11 @@ def save_model(model, filename, folder):
     - Uses os.makedirs(..., exist_ok=True) to ensure the folder exists.
     - Uses joblib.dump to write the model to disk.
     """
+    if filename.endswith(".joblib"):
+        filename = filename
+    else: 
+        filename = filename + ".joblib"
+    
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, filename)
     dump(model, path)
@@ -245,7 +250,7 @@ def save_model(model, filename, folder):
     return path
 
 
-def load_model(model, filename, folder):
+def load_model(folder = MODEL_PATH_STORAGE, filename: str = 'model.joblib'):
     """
     Load a persisted model from disk using joblib.load.
 
@@ -268,8 +273,12 @@ def load_model(model, filename, folder):
     - Raises an exception if the file does not exist or loading fails.
     - The function constructs the path with os.path.join(folder, filename) and calls joblib.load.
     """
-    
     path = os.path.join(folder, filename)
+    
+    if not os.path.isdir(path):
+        raise FileNotFoundError(f"Le chemin d'accès spécifié n'existe pas : {path}")
+    
+
     model = load(path)
 
     return model

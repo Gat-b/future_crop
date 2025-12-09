@@ -22,8 +22,8 @@ def make_temporal_features(X:pd.DataFrame) -> pd.DataFrame:
     number_of_copies = 240 # corresponds to the specifics of future_crop project
 
     for index in range(number_of_copies):
-        X[f'CO2_{index}'] = X['soil_co2_co2.1']
-        X[f'nitrogen_{index}'] = X['soil_co2_nitrogen.1']
+        X[f'CO2_{index}'] = X['soil_co2_co2_change']
+        X[f'nitrogen_{index}'] = X['soil_co2_nitrogen_change']
 
     return X
 

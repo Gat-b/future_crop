@@ -41,7 +41,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
-
-X_train_wheat_full.csv 
-b/future-crop-bucket/o/processed_data%2FX_train_wheat_full.csv

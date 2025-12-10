@@ -858,12 +858,11 @@ def pipeline_nodes_all_low_memory(
     # --- Enregistrer en CSV en local (sur la VM) ---
     print("\n Enregistrement csv")
     out_path = f"y_pred_{crop}_new.csv"
-    print(f"💾 Sauvegarde de {out_path} ...")
+    print(f"\n💾 Sauvegarde de {out_path} de taille {y_pred_df.shape} ...")
 
     # chunksize pour écrire par blocs si le DF est énorme
     y_pred_df.to_csv(out_path, index=False, chunksize=50_000)
-
-    print("✅ CSV sauvegardé.")
+    print("\n✅ CSV sauvegardé.\n")
 
     # Si tu n'as PAS besoin du DataFrame en RAM sur la VM,
     # tu peux retourner seulement le chemin du fichier :

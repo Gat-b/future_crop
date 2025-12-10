@@ -4,7 +4,8 @@
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from fastapi.responses import Response
+from google.cloud import storage
 
 ### Loading package functions and dfs ###
 # from future_crop.ml_logic.function import *
@@ -31,33 +32,34 @@ def root():
     }
 
 @app.get("/yield")
-def get_yield(model: str = "knn"):
+def get_yield(model: str = "knn", crop:str = "wheat"):
     """
     Returns the pre-calculated dataframe for the selected model.
     """
-    # Construct the path dynamically based on the model parameter
-    filename = f"{model}_yield_pred.csv"
-    # path = os.path.join(RESULT_PATH_STORAGE, filename)
-    path = f"gs://{BUCKET_NAME}/yield_forecasts/{filename}"
-    
-    # if os.path.exists(path): 
-    #     result_df = pd.read_csv(path)
-    #     # CONVERSION REQUIRED: FastAPI needs a dict/list, not a DataFrame
-    #     return result_df.to_json()
-    # else:
-    #     return {"error": f"File not found for model: {model} at path: {path}"}
+    filename = f"{crop}_{model}_yield_pred.csv.gz"
+    blob_path = f"yield_forecasts/{filename}"  # Path inside the bucket
 
-    # 2. On essaie de lire directement (sans os.path.exists)
     try:
-        # Pandas va utiliser gcsfs pour aller chercher le fichier via le réseau
-        result_df = pd.read_csv(path)
-        return result_df.to_json()
-        
+        # 1. Initialize GCS Client
+        client = storage.Client()
+        bucket = client.bucket(BUCKET_NAME)
+        blob = bucket.blob(blob_path)
+
+        # 2. Download the compressed file as bytes
+        # Since the file is small (2-5MB), we can download into memory safely
+        file_content = blob.download_as_bytes()
+
+        # 3. Return the raw bytes with the correct headers
+        # This sends the small compressed file, bypassing the 32MB limit
+        return Response(
+            content=file_content,
+            media_type="application/gzip",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
     except Exception as e:
-        # En cas d'erreur (fichier inexistant ou permissions), on l'affiche
         return {
-            "error": "Impossible de lire le fichier",
-            "path": path,
+            "error": "File not found or unreadable",
             "details": str(e)
         }
 

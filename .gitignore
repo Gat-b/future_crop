@@ -13,6 +13,7 @@ raw_data_maize.zip
 .python-version
 yield_forecasts/
 dummy_data/
+models/
 
 # Autres
 *.ipynb

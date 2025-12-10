@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-import gc
+import math
 
 
 def build_train_val_all_crops(crops=["wheat", "maize"]):
@@ -74,10 +74,22 @@ def build_test_all_crops():
 
     full_test_df = pd.concat(all_dfs, axis=0)
 
-    output_path = base_path/"X_test_all_crops_full.csv"
-    full_test_df.to_csv(output_path, index=False)
+    total_rows = len(full_test_df)
+    n_chunk = 10
+    chunk_size = math.ceil(total_rows / n_chunk)
 
-    return full_test_df
+    output_paths = []
+
+    for i in range(n_chunk):
+        start = i * chunk_size
+        end = min((i + 1) * chunk_size, total_rows)
+
+        df_part = full_test_df.iloc[start:end]
+
+        output_path = base_path/f"X_test_all_crops_part_{i+1}.csv"
+        df_part.to_csv(output_path, index=False)
+
+    return output_paths
 
 if __name__ == "__main__":
     # build_train_val_all_crops()

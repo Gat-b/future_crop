@@ -19,10 +19,10 @@ def run():
     X_test_path  = f"{BASE}/X_test_{CROP}_full.csv"
 
     print("🔹 Loading data...")
-    X_train = pd.read_csv(X_train_path, nrows=2000)
-    y_train = pd.read_csv(y_train_path, nrows=2000)
+    X_train = pd.read_csv(X_train_path)
+    y_train = pd.read_csv(y_train_path)
 
-    X_test  = pd.read_csv(X_test_path, nrows=2000)
+    X_test  = pd.read_csv(X_test_path)
     
 
     print("Shapes :", X_train.shape, y_train.shape, X_test.shape)
@@ -33,12 +33,12 @@ def run():
         X_test=X_test,
         n_neighbors=5,
         nb_features=7,
-        batch_nodes=16,
-        batch_size=2,
-        epochs=20,
+        batch_nodes=32,
+        batch_size=4,
+        epochs=15,
     )
 
-    out_path = f"{BASE}/y_pred10000_{CROP}_nodes_lstm.csv"
+    out_path = f"{BASE}/y_pred_{CROP}_nodes_lstm.csv"
     print(f"💾 Saving predictions to {out_path}")
     y_pred.to_csv(out_path, index=False)
 

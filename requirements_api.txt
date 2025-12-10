@@ -179,3 +179,4 @@ Werkzeug==3.1.4
 wrapt==2.0.1
 xgboost==1.7.6
 gcsfs
+streamlit==1.52.1

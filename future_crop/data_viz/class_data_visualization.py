@@ -12,9 +12,29 @@ class DataVisualization:
     """
     Utility class for visualizing data
     """
-    def __init__(self, geo_coding = "../geo_coding"):
-        self.geo_coding = Path(geo_coding)
-        self.geo_coding.mkdir(parents=True, exist_ok=True)
+    def __init__(self, geo_coding: Path = None, yield_forecasts: Path = None):
+        current_file_path = Path(__file__).resolve()
+        project_root = current_file_path.parents[2] # Remonte de 2 crans pour atteindre la racine du projet
+        
+        # Si aucun chemin n'est fourni, on construit le chemin absolu par défaut
+        if geo_coding is None:
+            self.geo_coding = project_root / "geo_coding"
+        else:
+            self.geo_coding = Path(geo_coding)
+            
+        if yield_forecasts is None:
+            self.yield_forecasts = project_root / "yield_forecasts"
+        else:
+            self.yield_forecasts = Path(yield_forecasts)
+
+        # Création des dossiers si inexistants
+        
+        # self.geo_coding.mkdir(parents=True, exist_ok=True)
+        # self.yield_forecasts.mkdir(parents=True, exist_ok=True)
+        # self.geo_coding = Path(geo_coding)
+        # self.geo_coding.mkdir(parents=True, exist_ok=True)
+        # self.yield_forecasts = Path(yield_forecasts)
+        # self.yield_forecasts.mkdir(parents=True, exist_ok=True)
 
     def plot_forecast(self, y_pred: pd.Series, y_train: pd.Series,
                       y_test: pd.Series, upper: np.ndarray = None,
@@ -83,12 +103,16 @@ class DataVisualization:
         plt.tight_layout()
         plt.show()
 
-    def create_results_df(self, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None) -> pd.DataFrame:
-        yield_df = pd.merge(X_val[["ID", "real_year", "lon_orig","lat_orig"]], y_val, how = 'inner', on = 'ID')
-        if y_pred is not None:
+    def create_results_df(self, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None, model: str = None) -> pd.DataFrame:
+        if y_val is not None: 
+            yield_df = pd.merge(X_val[["ID", "real_year", "lon_orig","lat_orig"]], y_val, how = 'inner', on = 'ID')
+        elif y_val is not None and y_pred is not None:
             yield_df = pd.concat([yield_df, pd.Series(y_pred)], axis=1)
             yield_df["yield_diff"] = yield_df[0] - yield_df["yield"]
+        else:
+            yield_df = pd.concat([X_val[["ID", "real_year", "lon_orig","lat_orig"]], pd.Series(y_pred)], axis=1)
         yield_df["lon_lat"] = yield_df["lon_orig"].astype(str) + "_" + yield_df["lat_orig"].astype(str)
+        yield_df.to_csv(self.yield_forecasts / f"{model}_yield_pred.csv", index=False)
         return yield_df
 
     def geo_plot(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,
@@ -121,7 +145,43 @@ class DataVisualization:
         )
 
         fig.update_layout(title="diff vs. valuation yield")
-        fig.show()
+        # fig.show()
+
+        path = self.geo_coding / f"geo_plot.html"
+        fig.write_html(path)
+        return fig
+
+    def geo_plot_non_diff(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,
+                 y_pred: pd.Series = None):
+        """
+        Plots the yield difference.
+        Can be called with a pre-computed yield_df OR with raw data (X, y, pred) to compute it on the fly.
+        """
+
+        # 1. Automatic Execution: Create DataFrame if not provided
+        if yield_df is None:
+            if all(v is not None for v in [X_val, y_val, y_pred]):
+                print("Computing results DataFrame automatically...")
+                yield_df = self.create_results_df(X_val, y_val, y_pred)
+            else:
+                raise ValueError("You must provide either 'yield_df' OR 'X_val', 'y_val', and 'y_pred'.")
+
+        # 2. Plotting Logic (unchanged)
+        fig = px.scatter_geo(
+            data_frame=yield_df,
+            lat="lat_orig",
+            lon="lon_orig",
+            color="yield",
+            range_color=[0, 10],
+            size_max=0.001,
+            hover_name="yield_diff",
+            animation_frame="real_year",
+            projection="natural earth",
+            color_continuous_scale="Turbo_r"
+        )
+
+        fig.update_layout(title="diff vs. valuation yield")
+        # fig.show()
 
         path = self.geo_coding / f"geo_plot.html"
         fig.write_html(path)
@@ -141,8 +201,8 @@ class DataVisualization:
         #2. Plotting
         sns.histplot(yield_df["yield_diff"], bins=100)
 
-    def plotting_forecast(self, train_df: pd.DataFrame = None, yield_df: pd.DataFrame = None, n_loc: int = 5, 
-                          X_train: pd.DataFrame = None, y_train: pd.DataFrame = None, 
+    def plotting_forecast(self, train_df: pd.DataFrame = None, yield_df: pd.DataFrame = None, n_loc: int = 5,
+                          X_train: pd.DataFrame = None, y_train: pd.DataFrame = None,
                           X_val: pd.DataFrame = None, y_val: pd.DataFrame = None, y_pred: pd.Series = None):
 
         # 1. Automatic Execution: Create DataFrame if not provided

@@ -5,6 +5,7 @@ from sklearn.ensemble import (GradientBoostingRegressor, AdaBoostRegressor,
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
+from sklearn.neighbors import KNeighborsRegressor
 
 # model dict
 model_dict = {
@@ -15,6 +16,7 @@ model_dict = {
     'XGBRegressor': XGBRegressor(),
     'LightGBM': LGBMRegressor(),
     'Catboost': CatBoostRegressor()
+
     }
 
 # params dict GridSearch
@@ -37,12 +39,19 @@ params_dict_grid={
     'XGBRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                     'max_depth': [3, 5, 10, 18],
                     'n_estimators': [10, 50, 100]},
-    # 'LightGBM': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-    #                 'max_depth': [3, 5, 10, 18],
-    #                 'n_estimators': [10, 50, 100]},
+    'LightGBM': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+                    'max_depth': [3, 5, 10, 18],
+                    'n_estimators': [10, 50, 100]},
     'Catboost': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                     'max_depth': [3, 5, 10, 20],
-                    'n_estimators': [10, 50, 100]}
+                    'n_estimators': [10, 50, 100]},
+    'knn': {'n_neighbors': [3, 5, 10, 15], 
+                          'weights': ['uniform', 'distance'], 
+                          'algorithm' :'auto',
+                          'leaf_size' : [10, 30,50], 
+                          'p' : 2, 
+                          'metric': 'minkowski', 
+                          'n_jobs': -1}
     }
 
 # params dict RandomizeSearch
@@ -66,17 +75,24 @@ params_dict_rando={
     'XGBRegressor': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
                     'max_depth': [3, 5, 10, 18],
                     'n_estimators': [10, 50, 100]},
+    'knn': {'n_neighbors': [3, 5, 10, 15], 
+                          'weights': ['uniform', 'distance'], 
+                          'algorithm' :'auto',
+                          'leaf_size' : [10, 30,50], 
+                          'p' : 2, 
+                          'metric': 'minkowski', 
+                          'n_jobs': -1}
     # 'LightGBM': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
     #                 'max_depth': [3, 5, 10, 18],
     #                 'n_estimators': [10, 50, 100]},
-    'Catboost': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
-                    'max_depth': [3, 5, 10, 20],
-                    'n_estimators': [10, 50, 100]}
+    # 'Catboost': {'learning_rate': [0.01, 0.05, 0.1, 0.5],
+    #                 'max_depth': [3, 5, 10],
+    #                 'n_estimators': [10, 50, 100]}
     }
 
 # custom dict
-adri_model_dict = {key: model_dict[key] for key in ['LightGBM']}
-adri_params_dict = {key: params_dict_rando[key] for key in ['LightGBM']}
+# adri_model_dict = {key: model_dict[key] for key in ['LightGBM']}
+# adri_params_dict = {key: params_dict_rando[key] for key in ['LightGBM']}
 
 simon_model_dict = {}
 simon_params_dict = {}
@@ -84,23 +100,25 @@ simon_params_dict = {}
 gat_model_dict = {}
 gat_params_dict = {}
 
-greg_model_dict = {'XGBRegressor': XGBRegressor(
-        tree_method= 'gpu_hist',  # C'est LA clé pour la v1.7.6 (au lieu de device='cuda')
-        predictor= 'gpu_predictor', # Optionnel, pour accélérer aussi la prédiction
-        gpu_id= 0
-    ),
-    'Catboost': CatBoostRegressor(
-        task_type='GPU',         # Crucial for CatBoost
-        devices='1',             # Use the first GPU
-        verbose=0
-    )
+greg_model_dict = {
+    # 'XGBRegressor': XGBRegressor(
+    #     tree_method= 'gpu_hist',  # C'est LA clé pour la v1.7.6 (au lieu de device='cuda')
+    #     predictor= 'gpu_predictor', # Optionnel, pour accélérer aussi la prédiction
+    #     gpu_id= 0
+    # ),
+    # 'Catboost': CatBoostRegressor(
+    #     task_type='GPU',         # Crucial for CatBoost
+    #     devices='1',             # Use the first GPU
+    #     verbose=0
+    # ),
+    'knn': KNeighborsRegressor()
 }
 
 # 'LightGBM': LGBMRegressor(
 #         device='gpu',            # Enable GPU training
 #         n_jobs=-1
 #     ),
-greg_params_dict = {key: params_dict_grid[key] for key in ['XGBRegressor', 'Catboost']}
+greg_params_dict = {key: params_dict_grid[key] for key in ['knn']} #'XGBRegressor'
 
 mat_model_dict = {}
 mat_params_dict = {}

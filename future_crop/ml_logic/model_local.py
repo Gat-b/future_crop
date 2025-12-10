@@ -755,7 +755,7 @@ def pipeline_nodes_all(X_train, y_train, X_test,
     X_test_set = X_test[["ID", "real_year", "lon_orig","lat_orig"]]
     y_pred_df = X_test_set.merge(y_pred, how='left', left_on='ID', right_index=True)
 
-    y_pred_df.to_csv("y_pred_wheat.csv")
+    y_pred_df.to_csv("y_pred_maize.csv")
 
     return y_pred_df
 

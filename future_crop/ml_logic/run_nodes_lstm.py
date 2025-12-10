@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import gc
 import gcsfs  # à ajouter si pas déjà fait
 
 from future_crop.ml_logic.model_local import pipeline_nodes_all
@@ -9,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 def run():
 
-    CROP = "wheat"
+    CROP = "maize"
 
     BUCKET_NAME = os.getenv("BUCKET_NAME", "future-crop-bucket")
     BASE = f"gs://{BUCKET_NAME}/processed_data"
@@ -37,10 +38,7 @@ def run():
         batch_size=4,
         epochs=15,
     )
-
-    out_path = f"{BASE}/y_pred_{CROP}_nodes_lstm.csv"
-    print(f"💾 Saving predictions to {out_path}")
-    y_pred.to_csv(out_path, index=False)
+    
 
 if __name__ == "__main__":
     run()

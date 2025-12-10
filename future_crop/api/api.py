@@ -29,7 +29,7 @@ def root():
     return {
         "status": "API is running",
         "message": "Use /yield?model=knn to get data"
-    }
+    } #ajouter liste des fichiers ZIP
 
 @app.get("/yield")
 def get_yield(model: str = "knn", crop:str = "wheat"):

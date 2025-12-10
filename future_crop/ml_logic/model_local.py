@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import torch
 
 from keras.layers import Input, Conv1D, LSTM, Bidirectional, Dropout, Dense, TimeDistributed
 from keras.models import Model
@@ -717,7 +718,7 @@ def pipeline_nodes(X_train, y_train, X_val, y_val, X_test, y_test,
     return models, coord_all, rmse_per_node, rmse_global, preds_all
 
 
-def pipeline_nodes_all(X_train, y_train, X_test,
+def pipeline_nodes_all(crop, X_train, y_train, X_test,
                    n_neighbors=5, nb_features=7, batch_nodes=16, batch_size=2,
                    epochs=20) :
 
@@ -747,15 +748,127 @@ def pipeline_nodes_all(X_train, y_train, X_test,
     print("\n🎉 Models fit et evalués !")
 
     # --- Predict ---
+    print("\n Lancement predict")
     X_test_tensor, id_test = preproc_nodes_x(X_test, coord_all, A_all, nb_features, test=False)
     y_pred = predict_local_models(models, X_test_tensor, id_test, A_all, n_neighbors)
     y_pred.set_index('ID', inplace=True)
 
     # --- Enregistrer en CSV ---
+    print("\n Enregistrement csv")
     X_test_set = X_test[["ID", "real_year", "lon_orig","lat_orig"]]
     y_pred_df = X_test_set.merge(y_pred, how='left', left_on='ID', right_index=True)
 
-    y_pred_df.to_csv("y_pred_maize.csv")
+    y_pred_df.to_csv(f"y_pred_{crop}_new.csv")
 
     return y_pred_df
+
+
+import gc
+
+def pipeline_nodes_all_low_memory(
+    crop,
+    X_train,
+    y_train,
+    X_test,
+    n_neighbors=5,
+    nb_features=7,
+    batch_nodes=16,
+    batch_size=2,
+    epochs=20
+):
+    print("\n Lancement du pipeline_nodes...")
+
+    # --- Fix problème d'arrondi ---
+    X_train['lat_orig'] = X_train['lat_orig'].round(6)
+    X_train['lon_orig'] = X_train['lon_orig'].round(6)
+
+    # --- Création de A prenant en compte l'ensemble des points géographiques ---
+    print("\n Création de la matrice A...")
+    coord_all, A_all = matrice_adj(X_train, n_neighbors)
+
+    # --- Préprocessing TRAIN ---
+    print("\n Lancement du preprocessing du train")
+    X_tensor_train, y_tensor_train, id_train = preproc_nodes(
+        X_train, y_train, coord_all, A_all, nb_features, test=False
+    )
+
+    # 🔻 On peut déjà libérer les DataFrames train (ils ne servent plus après le préproc)
+    del X_train, y_train
+    gc.collect()
+
+    # --- Models par node ---
+    models = train_local_models_batched_all(
+        X_tensor_train, y_tensor_train,
+        A_all, n_neighbors,
+        batch_nodes,
+        epochs,
+        batch_size
+    )
+
+    # 🔻 Libérer les tensors de train (on ne garde que les modèles)
+    del X_tensor_train, y_tensor_train, id_train
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+    print("\n🎉 Models fit et evalués !")
+
+    # --- Préparer le subset de X_test AVANT de le transformer en tenseurs ---
+    X_test_set = X_test[["ID", "real_year", "lon_orig", "lat_orig"]].copy()
+
+    # --- Préprocessing TEST ---
+    print("\n Lancement du preprocessing du test")
+    X_test_tensor, id_test = preproc_nodes_x(
+        X_test, coord_all, A_all, nb_features, test=False
+    )
+
+    # 🔻 On peut libérer le gros DataFrame X_test maintenant
+    del X_test
+    gc.collect()
+
+    # --- Predict ---
+    print("\n Lancement predict")
+    y_pred = predict_local_models(models, X_test_tensor, id_test, A_all, n_neighbors)
+    y_pred.set_index('ID', inplace=True)
+
+    # 🔻 Libération des tensors test + matrices de graphes
+    print("\n Réduction de la mémoire")
+    del X_test_tensor, id_test, A_all, coord_all
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+    # --- Fusion finale ---
+    print(f"\n Création de y_pred_{crop}")
+    y_pred_df = X_test_set.merge(y_pred, how='left', left_on='ID', right_index=True)
+
+    # 🔻 On a merge, donc X_test_set et y_pred ne sont plus nécessaires
+    print("\n Réduction de la mémoire")
+    del X_test_set, y_pred
+    gc.collect()
+
+    # --- Enregistrer en CSV en local (sur la VM) ---
+    print("\n Enregistrement csv")
+    out_path = f"y_pred_{crop}_new.csv"
+    print(f"💾 Sauvegarde de {out_path} ...")
+
+    # chunksize pour écrire par blocs si le DF est énorme
+    y_pred_df.to_csv(out_path, index=False, chunksize=50_000)
+
+    print("✅ CSV sauvegardé.")
+
+    # Si tu n'as PAS besoin du DataFrame en RAM sur la VM,
+    # tu peux retourner seulement le chemin du fichier :
+    # return out_path
+
+    return y_pred_df
+
 

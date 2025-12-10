@@ -6,6 +6,9 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 import os
 from joblib import dump, load
+import pandas as pd
+from pathlib import Path
+
 from future_crop.params import *
 
 
@@ -161,7 +164,7 @@ def model_predict(X, model):
     return y_pred
 
 
-def model_score(X, y, model):
+def model_score(X_val, y_pred, model):
     """
     Compute the model score on given data using estimator.score.
 
@@ -179,7 +182,7 @@ def model_score(X, y, model):
     score : float
         Score returned by model.score(X, y).
     """
-    score = model.score(X, y)
+    score = model.score(X_val, y_pred)
 
     return score
 
@@ -273,6 +276,9 @@ def load_model(folder = MODEL_PATH_STORAGE, filename: str = 'model.joblib'):
     - Raises an exception if the file does not exist or loading fails.
     - The function constructs the path with os.path.join(folder, filename) and calls joblib.load.
     """
+    if not os.path.isdir(folder):
+        raise FileNotFoundError(f"Le dossier spécifié n'existe pas : {folder}")
+
     path = os.path.join(folder, filename)
     
     if not os.path.isdir(path):

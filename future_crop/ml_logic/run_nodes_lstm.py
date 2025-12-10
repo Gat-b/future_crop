@@ -4,6 +4,9 @@ import gcsfs  # à ajouter si pas déjà fait
 
 from future_crop.ml_logic.model_local import pipeline_nodes_all
 
+import warnings
+warnings.filterwarnings("ignore")
+
 def run():
 
     CROP = "wheat"
@@ -41,3 +44,6 @@ def run():
 
 if __name__ == "__main__":
     run()
+    
+    
+    

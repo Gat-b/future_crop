@@ -22,8 +22,8 @@ def make_temporal_features(X:pd.DataFrame) -> pd.DataFrame:
     number_of_copies = 240 # corresponds to the specifics of future_crop project
 
     for index in range(number_of_copies):
-        X[f'CO2_{index}'] = X['soil_co2_co2.1']
-        X[f'nitrogen_{index}'] = X['soil_co2_nitrogen.1']
+        X[f'CO2_{index}'] = X['soil_co2_co2_change']
+        X[f'nitrogen_{index}'] = X['soil_co2_nitrogen_change']
 
     return X
 
@@ -40,7 +40,7 @@ def time_columns_selection_orig(X: pd.DataFrame) -> pd.DataFrame:
         [c for c in X.columns if 'rsds_' in c] + \
         [c for c in X.columns if 'CO2_' in c]  + \
         [c for c in X.columns if 'nitrogen_' in c] + \
-        ['Unnamed: 0', 'real_year', 'lon_orig', 'lat_orig']
+        ['ID', 'real_year', 'lon_orig', 'lat_orig']
 
     roll_columns = [c for c in X.columns if 'pr_roll' in c]
 

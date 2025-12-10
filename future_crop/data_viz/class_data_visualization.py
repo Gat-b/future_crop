@@ -15,20 +15,20 @@ class DataVisualization:
     def __init__(self, geo_coding: Path = None, yield_forecasts: Path = None):
         current_file_path = Path(__file__).resolve()
         project_root = current_file_path.parents[2] # Remonte de 2 crans pour atteindre la racine du projet
-        
+
         # Si aucun chemin n'est fourni, on construit le chemin absolu par défaut
         if geo_coding is None:
             self.geo_coding = project_root / "geo_coding"
         else:
             self.geo_coding = Path(geo_coding)
-            
+
         if yield_forecasts is None:
             self.yield_forecasts = project_root / "yield_forecasts"
         else:
             self.yield_forecasts = Path(yield_forecasts)
 
         # Création des dossiers si inexistants
-        
+
         # self.geo_coding.mkdir(parents=True, exist_ok=True)
         # self.yield_forecasts.mkdir(parents=True, exist_ok=True)
         # self.geo_coding = Path(geo_coding)
@@ -121,7 +121,7 @@ class DataVisualization:
         return yield_df
 
     def geo_plot(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,
-                 y_pred: pd.Series = None):
+                 y_pred: pd.Series = None, zoom_area : dict = None):
         """
         Plots the yield difference.
         Can be called with a pre-computed yield_df OR with raw data (X, y, pred) to compute it on the fly.
@@ -149,15 +149,33 @@ class DataVisualization:
             color_continuous_scale="Turbo_r"
         )
 
-        fig.update_layout(title="diff vs. valuation yield")
-        # fig.show()
+        # 3. Application du Zoom (Nouveauté)
+        if zoom_area is not None:
+            # Utilise update_geos pour définir la zone de la carte
+            fig.update_geos(
+                # Définir le scope (monde, europe, usa, asia, etc.)
+                scope=zoom_area.get('scope', 'world'),
+                # Définir le centre de la carte
+                center=zoom_area.get('center', None),
+                # Définir le niveau de zoom (par défaut 1, >1 zoome plus)
+                lataxis_range=zoom_area.get('lataxis_range', None),
+                lonaxis_range=zoom_area.get('lonaxis_range', None),
+                # Zoom pour ajuster les données si 'fitbounds' est fourni
+                fitbounds=zoom_area.get('fitbounds', False)
+        )
+        # Si aucun zoom n'est spécifié, on conserve une vue globale par défaut
+        else:
+            fig.update_geos(scope='world')
+
+            fig.update_layout(title="diff vs. valuation yield")
+            # fig.show()
 
         path = self.geo_coding / f"geo_plot.html"
         fig.write_html(path)
         return fig
 
     def geo_plot_non_diff(self, yield_df: pd.DataFrame = None, X_val: pd.DataFrame = None, y_val: pd.DataFrame = None,
-                 y_pred: pd.Series = None):
+                 y_pred: pd.Series = None, zoom_area : str = None):
         """
         Plots the yield difference.
         Can be called with a pre-computed yield_df OR with raw data (X, y, pred) to compute it on the fly.
@@ -176,17 +194,35 @@ class DataVisualization:
             data_frame=yield_df,
             lat="lat_orig",
             lon="lon_orig",
-            color="yield",
+            color='pred',
             range_color=[0, 10],
             size_max=0.001,
-            hover_name="yield_diff",
+            hover_name='pred',  # modification par MLS
             animation_frame="real_year",
             projection="natural earth",
             color_continuous_scale="Turbo_r"
         )
 
-        fig.update_layout(title="diff vs. valuation yield")
-        # fig.show()
+        # 3. Application du Zoom (Nouveauté)
+        if zoom_area is not None:
+            # Utilise update_geos pour définir la zone de la carte
+            fig.update_geos(
+                # Définir le scope (monde, europe, usa, asia, etc.)
+                scope=zoom_area.get('scope', 'world'),
+                # Définir le centre de la carte
+                center=zoom_area.get('center', None),
+                # Définir le niveau de zoom (par défaut 1, >1 zoome plus)
+                lataxis_range=zoom_area.get('lataxis_range', None),
+                lonaxis_range=zoom_area.get('lonaxis_range', None),
+                # Zoom pour ajuster les données si 'fitbounds' est fourni
+                fitbounds=zoom_area.get('fitbounds', False)
+        )
+        # Si aucun zoom n'est spécifié, on conserve une vue globale par défaut
+        else:
+            fig.update_geos(scope='world')
+
+            fig.update_layout(title="expected yield")
+            # fig.show()
 
         path = self.geo_coding / f"geo_plot.html"
         fig.write_html(path)
@@ -243,13 +279,14 @@ class DataVisualization:
             sns.lineplot(train_df[train_df["lon_lat"]==loc],x="real_year",y='yield', ax=ax, color=color, alpha=0.4, legend=False)
             sns.lineplot(yield_df[yield_df["lon_lat"]==loc], x= "real_year",y="yield", ax=ax, color=color, label=str(loc), linewidth=2)
             if 0 in val_data.columns:
-                sns.lineplot(yield_df[yield_df["lon_lat"]==loc], x= "real_year",y=0, ax=ax, color=color, linestyle='--', linewidth=2, legend=False)
+                sns.lineplot(yield_df[yield_df["lon_lat"]==loc], x= "real_year",y='pred', ax=ax, color=color, linestyle='--', linewidth=2, legend=False)
 
         ax.set_title(f"Yield History & Forecast ({n_loc} Random Locations)")
         ax.set_ylabel("Yield")
         ax.legend(title="Location", bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.tight_layout()
-        plt.show()
+        # plt.show()
+        return fig
 
     def plot_feature_importance(self, model, feature_names: list[str], top_n: int =20):
 

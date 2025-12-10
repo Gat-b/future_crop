@@ -537,7 +537,7 @@ if __name__ == "__main__":
     # preproc.run_production(crops=['wheat', 'maize'])
     
     # CAS 2 : Juste Wheat pour la prod (3 fichiers)
-    preproc.run_production(crops=['wheat'])
+    preproc.run_production(crops=['maize'])
     
     # CAS 3 : Exploration Wheat (Train/Val split)
     # preproc.run_exploration(crops=['wheat'], cutoff_year=2010, force_reload=True)

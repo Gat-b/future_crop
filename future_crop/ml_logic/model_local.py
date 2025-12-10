@@ -139,7 +139,7 @@ def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
                 continue
 
             # Extraction de la série temporelle (240 jours, features_num)
-            X_series = np.array(x_node[:-4]).reshape(nb_features, 240)
+            X_series = np.array(x_node[:-5]).reshape(nb_features, 240)
 
             # Injection dans le tenseur final
             X_tensor[id_year, node_id] = X_series
@@ -163,7 +163,7 @@ def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
                 index = X.loc[(X['lat_orig'] == lat) &
                                             (X['lon_orig'] == lon) &
                                             (X['real_year'] == real_year),
-                                            'Unnamed: 0'].values[0]
+                                            'ID'].values[0]
 
                 id[id_year, node_id] = y.loc[index, 'ID']
 
@@ -171,7 +171,7 @@ def preproc_nodes(X_bef, y_bef, coord, A, nb_features=7, test=False):
                 id[id_year, node_id] = X.loc[(X['lat_orig'] == lat) &
                                             (X['lon_orig'] == lon) &
                                             (X['real_year'] == real_year),
-                                            'Unnamed: 0'].values[0]
+                                            'ID'].values[0]
 
     ## Ajout des valeurs manquantes par les moyennes des voisins
     X_tensor = impute_neighbors(X_tensor, A)
@@ -230,7 +230,7 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
             node_id = coord_index[(lat, lon)]
 
             # Extraction des features temporelles
-            X_series = np.array(x_node[:-4]).reshape(nb_features, 240)
+            X_series = np.array(x_node[:-5]).reshape(nb_features, 240)
             X_tensor[id_year, node_id] = X_series
 
             # ID correspondant
@@ -238,7 +238,7 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
                 (X['lat_orig'] == lat) &
                 (X['lon_orig'] == lon) &
                 (X['real_year'] == year),
-                'Unnamed: 0'
+                'ID'
             ].values[0]
 
             id_tensor[id_year, node_id] = index_row
@@ -269,7 +269,12 @@ def get_neighbors_idx(A, n_neighbors=5):
 # ------------------------
 
 def rmse(y_true, y_pred):
-    return K.sqrt(K.mean(K.square(y_pred - y_true), axis=None))
+    """
+    RMSE en TensorFlow pur (compatible Keras 3+)
+    """
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(y_pred, tf.float32)
+    return tf.sqrt(tf.reduce_mean(tf.square(y_pred - y_true)))
 
 def rmse_df(df_true, df_pred):
     # Fusionner les data_frame
@@ -329,9 +334,13 @@ def train_local_models(X_tensor_train, y_tensor_train, X_tensor_val, y_tensor_va
         y_val_node = y_tensor_val[:, node_id, :]
 
         # --- Callbacks ---
-        es = EarlyStopping(patience=10,
-                        restore_best_weights=True,
-                        monitor='val_rmse')
+        es = EarlyStopping(
+                    patience=10,
+                    restore_best_weights=True,
+                    monitor='val_rmse',
+                    mode='min'
+                )
+
 
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                                 patience=2, min_lr=1e-6)
@@ -400,7 +409,12 @@ def train_local_models_batched(
         y_val_flat = tf.reshape(tf.stack(y_val_batch), (B * y_val_batch[0].shape[0], 1))
 
         # Callbacks
-        es = EarlyStopping(patience=5, restore_best_weights=True, monitor='val_rmse')
+        es = EarlyStopping(
+                        patience=5,
+                        restore_best_weights=True,
+                        monitor='val_rmse',
+                        mode='min'
+                    )
         rl = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3)
 
         # Modèle partagé pour ce batch
@@ -469,7 +483,13 @@ def train_local_models_batched_all(
         #y_val_flat = tf.reshape(tf.stack(y_val_batch), (B * y_val_batch[0].shape[0], 1))
 
         # Callbacks
-        es = EarlyStopping(patience=5, restore_best_weights=True, monitor='val_rmse')
+        es = EarlyStopping(
+                        patience=5,
+                        restore_best_weights=True,
+                        monitor='val_rmse',
+                        mode='min'
+                    )
+
         rl = ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=3)
 
         # Modèle partagé pour ce batch
@@ -732,11 +752,10 @@ def pipeline_nodes_all(X_train, y_train, X_test,
     y_pred.set_index('ID', inplace=True)
 
     # --- Enregistrer en CSV ---
-    X_test_set = X_test[["Unnamed: 0", "real_year", "lon_orig","lat_orig"]]
-    X_test_set = X_test_set.rename(columns={'Unnamed: 0': 'ID'})
+    X_test_set = X_test[["ID", "real_year", "lon_orig","lat_orig"]]
     y_pred_df = X_test_set.merge(y_pred, how='left', left_on='ID', right_index=True)
 
-    y_pred_df.to_csv("y_pred_wheat.csv")
+    y_pred_df.to_csv("y_pred_maize.csv")
 
     return y_pred_df
 

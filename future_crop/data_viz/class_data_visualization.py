@@ -110,7 +110,7 @@ class DataVisualization:
             yield_df = pd.concat([yield_df, pd.Series(y_pred)], axis=1)
             yield_df["yield_diff"] = yield_df[0] - yield_df["yield"]
         else:
-            yield_df = pd.merge(X_val[["ID", "real_year", "lon_orig","lat_orig"]], y_pred, how= 'left', on='ID')
+            yield_df = pd.concat([X_val[["ID", "real_year", "lon_orig","lat_orig"]], pd.Series(y_pred)], axis=1)
         yield_df["lon_lat"] = yield_df["lon_orig"].astype(str) + "_" + yield_df["lat_orig"].astype(str)
         yield_df.to_csv(self.yield_forecasts / f"{model}_yield_pred.csv", index=False)
         return yield_df

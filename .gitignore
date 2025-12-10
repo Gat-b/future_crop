@@ -12,7 +12,8 @@ raw_data_maize.zip
 .venv/
 .python-version
 yield_forecasts/
-
+dummy_data/
+models/
 
 # Autres
 *.ipynb
@@ -28,3 +29,7 @@ future_crop.egg-info/
 
 # Logs
 nohup.out
+
+#images
+*.webp
+*.png

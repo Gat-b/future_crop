@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from future_crop.ml_logic.model_local import (  # ← adapte le chemin si besoin
+from future_crop.ml_logic.model_local import ( 
     matrice_adj,
     preproc_nodes,
 )
@@ -12,8 +12,8 @@ from future_crop.ml_logic.model_local import (  # ← adapte le chemin si besoin
 BUCKET_NAME = os.getenv("BUCKET_NAME", "future-crop-bucket")
 BASE = f"gs://{BUCKET_NAME}/processed_data"
 
-def precompute_X_test_for_crop(crop: str, n_neighbors: int = 5, nb_features: int = 7):
-    print(f"\n=== Pré-calcul de X_test pour {crop.upper()} ===")
+def precompute_for_crop(crop: str, n_neighbors: int = 5, nb_features: int = 7):
+    print(f"\n=== Pré-calcul complet pour {crop.upper()} ===")
 
     # --- Paths ---
     X_train_path = f"{BASE}/X_train_{crop}_full.csv"
@@ -32,58 +32,80 @@ def precompute_X_test_for_crop(crop: str, n_neighbors: int = 5, nb_features: int
 
     print("Shapes :", X_train.shape, y_train.shape, X_test.shape)
 
-    # --- Fix arrondis pour cohérence avec le train ---
-    X_train["lat_orig"] = X_train["lat_orig"].round(6)
-    X_train["lon_orig"] = X_train["lon_orig"].round(6)
-    X_test["lat_orig"]  = X_test["lat_orig"].round(6)
-    X_test["lon_orig"]  = X_test["lon_orig"].round(6)
+    # --- Arrondis pour cohérence ---
+    for df in [X_train, X_test]:
+        df["lat_orig"] = df["lat_orig"].round(6)
+        df["lon_orig"] = df["lon_orig"].round(6)
 
-    # --- Matrice d'adjacence commune (basée sur le train) ---
+    # --- Matrice d'adjacence ---
     print("\n Création de la matrice A...")
     coord_all, A_all = matrice_adj(X_train, n_neighbors=n_neighbors)
 
-    # --- Préprocess complet (X + y + id) en mode test=True ---
-    # Ici on ne se sert que de X_tensor et id, mais preproc_nodes a besoin de y.
-    print("\n Lancement du preprocessing du TEST (full)...")
-    X_test_tensor, y_dummy, id_test = preproc_nodes(
-        X_bef=X_test,
-        y_bef=y_train,        # on recycle y_train, y_dummy ne sera pas utilisé
+    # --- PREPROCESS TRAIN ---
+    print("\n Lancement du preprocessing TRAIN...")
+    X_train_tensor, y_train_tensor, _ = preproc_nodes(
+        X_bef=X_train,
+        y_bef=y_train,
         coord=coord_all,
         A=A_all,
         nb_features=nb_features,
-        test=True,
+        test=False
     )
 
-    print("✅ Preprocessing test terminé.")
-    print("Shape X_test_tensor :", X_test_tensor.shape)
-    print("Shape id_test       :", id_test.shape)
+    print("Shapes TRAIN :")
+    print("  X_train_tensor:", X_train_tensor.shape)
+    print("  y_train_tensor:", y_train_tensor.shape)
 
-    # --- Sauvegarde sur la VM en .npy ---
-    out_dir = f"./precomputed_tensors"
+    # --- PREPROCESS TEST ---
+    print("\n Lancement du preprocessing TEST...")
+    X_test_tensor, y_dummy, _ = preproc_nodes(
+        X_bef=X_test,
+        y_bef=y_train,     # y_dummy inutile
+        coord=coord_all,
+        A=A_all,
+        nb_features=nb_features,
+        test=True
+    )
+
+    print("Shapes TEST :")
+    print("  X_test_tensor:", X_test_tensor.shape)
+
+    # --- Convert tensors to numpy ---
+    def to_np(x):
+        return x.numpy() if isinstance(x, tf.Tensor) else x
+
+    X_train_np = to_np(X_train_tensor)
+    y_train_np = to_np(y_train_tensor)
+    X_test_np  = to_np(X_test_tensor)
+    A_np       = np.array(A_all)
+    coord_np   = coord_all.to_numpy()
+
+    # --- SAVE ---
+    out_dir = "./precomputed_tensors"
     os.makedirs(out_dir, exist_ok=True)
 
-    # X_test_tensor est un tf.Tensor → on le convertit en numpy
-    X_test_np = X_test_tensor.numpy() if isinstance(X_test_tensor, tf.Tensor) else X_test_tensor
+    print("\n💾 Sauvegarde des tenseurs...")
 
-    X_out_path  = os.path.join(out_dir, f"X_test_{crop}_tensor.npy")
-    id_out_path = os.path.join(out_dir, f"id_test_{crop}.npy")
+    np.save(os.path.join(out_dir, f"X_train_{crop}.npy"), X_train_np)
+    np.save(os.path.join(out_dir, f"y_train_{crop}.npy"), y_train_np)
+    np.save(os.path.join(out_dir, f"X_test_{crop}.npy"),  X_test_np)
 
-    print(f"\n💾 Sauvegarde de {X_out_path} ...")
-    np.save(X_out_path, X_test_np)
+    # Matrice A + coords
+    np.save(os.path.join(out_dir, f"A_all_{crop}.npy"), A_np)
+    np.save(os.path.join(out_dir, f"coord_all_{crop}.npy"), coord_np)
 
-    print(f"💾 Sauvegarde de {id_out_path} ...")
-    np.save(id_out_path, id_test)
+    print(f"✅ Sauvegardé pour {crop} dans {out_dir}/")
 
-    # Libération mémoire
-    del X_train, y_train, X_test, coord_all, A_all, X_test_tensor, y_dummy, id_test, X_test_np
+    # --- Clean memory ---
+    del (X_train, y_train, X_test, coord_all, A_all,
+         X_train_tensor, y_train_tensor, X_test_tensor,
+         X_train_np, y_train_np, X_test_np, A_np, coord_np)
     gc.collect()
-
-    print(f"\n✅ Pré-calcul terminé pour {crop.upper()}.\n")
 
 
 def main():
     for crop in ["wheat", "maize"]:
-        precompute_X_test_for_crop(crop)
+        precompute_for_crop(crop)
 
 
 if __name__ == "__main__":

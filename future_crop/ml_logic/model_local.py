@@ -207,6 +207,7 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
     nb_nodes = len(coord)
 
     # --- Préprocessing temporel ---
+    print('Préprocessing temporelle...')
     X_set = make_temporal_features(X)
     X_time = time_columns_selection_orig(X_set)
 
@@ -218,6 +219,7 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
     coord_index = { tuple(c): i for i, c in enumerate(coord[['lat_orig','lon_orig']].itertuples(index=False)) }
 
     # --- Remplissage des tenseurs ---
+    print('Remplissage des tenseurs')
     for id_year, year in enumerate(years):
         X_year = X_time[X_time['real_year'] == year]
 
@@ -251,6 +253,8 @@ def preproc_nodes_x(X_bef, coord, A, nb_features=7, test=False):
     print("Shape de id_tensor:", id_tensor.shape)
 
     return X_tensor, id_tensor
+
+
 
 
 # ------------------------

@@ -794,7 +794,6 @@ def pipeline_nodes_all_low_memory(
 
     # 🔻 On peut déjà libérer les DataFrames train (ils ne servent plus après le préproc)
     del X_train, y_train
-    gc.collect()
 
     # --- Models par node ---
     models = train_local_models_batched_all(
@@ -807,7 +806,6 @@ def pipeline_nodes_all_low_memory(
 
     # 🔻 Libérer les tensors de train (on ne garde que les modèles)
     del X_tensor_train, y_tensor_train, id_train
-    gc.collect()
     try:
         import torch
         if torch.cuda.is_available():
@@ -828,7 +826,6 @@ def pipeline_nodes_all_low_memory(
 
     # 🔻 On peut libérer le gros DataFrame X_test maintenant
     del X_test
-    gc.collect()
 
     # --- Predict ---
     print("\n Lancement predict")
@@ -838,7 +835,6 @@ def pipeline_nodes_all_low_memory(
     # 🔻 Libération des tensors test + matrices de graphes
     print("\n Réduction de la mémoire")
     del X_test_tensor, id_test, A_all, coord_all
-    gc.collect()
     try:
         import torch
         if torch.cuda.is_available():
@@ -853,7 +849,6 @@ def pipeline_nodes_all_low_memory(
     # 🔻 On a merge, donc X_test_set et y_pred ne sont plus nécessaires
     print("\n Réduction de la mémoire")
     del X_test_set, y_pred
-    gc.collect()
 
     # --- Enregistrer en CSV en local (sur la VM) ---
     print("\n Enregistrement csv")
